@@ -1,0 +1,17 @@
+{
+    "name": "tei187/qr-image2png",
+    "description": "Converts bitmap image-based QR codes into SVG form.",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Tei187\\QrImage2png\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "tei187",
+            "email": "bonk.piotr@gmail.com"
+        }
+    ]
+}
