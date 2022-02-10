@@ -13,5 +13,12 @@
             "name": "tei187",
             "email": "bonk.piotr@gmail.com"
         }
-    ]
+    ],
+    "minimum-stability": "stable",
+    "require": {
+        "php": ">=7.0"
+    },
+    "config": {
+        "sort-packages": true
+    }
 }
