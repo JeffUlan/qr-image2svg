@@ -3,18 +3,11 @@ namespace tei187\QR_image2svg;
 use tei187\QR_image2svg\Resources\MIME as MIME;
 
 abstract class Converter {
-    /*protected $file = null;
+    protected $file = null;
     protected $session = null;
     protected $params = [
         'step' => 1,
         'threshold' => 127
-    ];*/
-
-    protected $file = "QR3.png";
-    protected $session = "1";
-    protected $params = [
-        'step' => 24,
-        'threshold' => 127,
     ];
 
     protected $image = [
