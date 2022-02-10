@@ -2,6 +2,7 @@
 
 namespace tei187\QrImage2Svg\Converter;
 use \tei187\QrImage2Svg\Converter as Converter;
+use \tei187\QrImage2Svg\Resources\MIME as MIME;
 
 class ImageMagick extends Converter {
     private $withPrefix = true;
@@ -17,6 +18,7 @@ class ImageMagick extends Converter {
      * @param boolean $prefix Switch. On true places "magick" prefix in commands (enviroment-specific).
      */
     function __construct(string $file = null, string $session = null, int $steps = null, int $threshold = null, bool $prefix = true) {
+        if(!is_null($session)) $this->setSession($session);
         if(!is_null($file)) $this->setFile($file);
         if(!is_null($steps)) $this->setParamsStep($steps);
         if(!is_null($threshold)) $this->setParamsThreshold($threshold);
@@ -91,7 +93,7 @@ class ImageMagick extends Converter {
         list(
             $this->image['w'], 
             $this->image['h']
-        ) = explode("x", shell_exec($cmd));
+        ) = explode("x", shell_exec($cmd), 2);
     }
 
     /**

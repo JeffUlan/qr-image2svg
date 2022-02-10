@@ -9,7 +9,7 @@ class GD extends Converter {
      * @return bool|array
      */
     protected function getDimensions() {
-        $path = "./temp/" . $this->session . "/" . $this->file;
+        $path = "process/" . $this->session . "/" . $this->file;
         $d = getimagesize($path);
         if($d !== false) {
             $this->image['w'] = $d[0];

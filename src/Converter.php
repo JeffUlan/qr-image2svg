@@ -1,6 +1,6 @@
 <?php
 namespace tei187\QrImage2Svg;
-use tei187\QrImage2Svg\Resources\MIME as MIME;
+use \tei187\QrImage2Svg\Resources\MIME as MIME;
 
 abstract class Converter {
     protected $file = null;
@@ -36,6 +36,7 @@ abstract class Converter {
      */
     function __construct(string $file = null, string $session = null, int $steps = null, int $threshold = null) {
         if(!is_null($file)) $this->setFile($file);
+        if(!is_null($session)) $this->setSession($session);
         if(!is_null($steps)) $this->setParamsStep($steps);
         if(!is_null($threshold)) $this->setParamsThreshold($threshold);
     }
@@ -47,7 +48,7 @@ abstract class Converter {
      */
     protected function checkSession() : bool {
         if(!is_null($this->session)) {
-            if(file_exists("./process/" . $this->session)) {
+            if(file_exists("process/" . $this->session)) {
                 return true;
             }
         }
@@ -61,7 +62,7 @@ abstract class Converter {
      */
     protected function getPath() {
         if(!is_null($this->file) && $this->checkSession()) {
-            return "./process/" . $this->session . "/" . $this->file;
+            return "process/" . $this->session . "/" . $this->file;
         }
         return false;
     }
@@ -73,7 +74,7 @@ abstract class Converter {
      */
     protected function getDirPath() {
         if($this->checkSession()) {
-            return "./process/" . $this->session . "/";
+            return "process/" . $this->session . "/";
         }
         return false;
     }
@@ -203,7 +204,6 @@ abstract class Converter {
     
         $path = $this->getDirPath() !== false ? $this->getDirPath() : null;
         file_put_contents($path."output.svg", $svgStr);
-        //echo $svgStr;
         return $svgStr;
     }
 
