@@ -2,7 +2,6 @@
 
 namespace tei187\QrImage2Svg\Converter;
 use \tei187\QrImage2Svg\Converter as Converter;
-use \tei187\QrImage2Svg\Resources\MIME as MIME;
 
 class ImageMagick extends Converter {
     private $withPrefix = true;
