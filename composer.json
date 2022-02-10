@@ -1,5 +1,5 @@
 {
-    "name": "tei187/qr-image2png",
+    "name": "tei187/qr-image2svg",
     "description": "Converts bitmap image-based QR codes into SVG form.",
     "type": "library",
     "license": "MIT",
