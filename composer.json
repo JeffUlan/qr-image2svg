@@ -5,7 +5,7 @@
     "license": "MIT",
     "autoload": {
         "psr-4": {
-            "Tei187\\QrImage2png\\": "src/"
+            "Tei187\\QrImage2svg\\": "src/"
         }
     },
     "authors": [
