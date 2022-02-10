@@ -1,6 +1,6 @@
 <?php
-namespace tei187\QR_image2svg\Converter;
-use tei187\QR_image2svg\Converter as Converter;
+namespace tei187\QrImage2Svg\Converter;
+use tei187\QrImage2Svg\Converter as Converter;
 
 class GD extends Converter {
     /**

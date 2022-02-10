@@ -1,6 +1,6 @@
 <?php
 
-namespace tei187\QR_image2svg\Resources;
+namespace tei187\QrImage2Svg\Resources;
 
 /**
  * Utility class for handling MIME type restrictions and support.

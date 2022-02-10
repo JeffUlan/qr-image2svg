@@ -1,6 +1,6 @@
 <?php
-namespace tei187\QR_image2svg;
-use tei187\QR_image2svg\Resources\MIME as MIME;
+namespace tei187\QrImage2Svg;
+use tei187\QrImage2Svg\Resources\MIME as MIME;
 
 abstract class Converter {
     protected $file = null;
@@ -82,7 +82,7 @@ abstract class Converter {
      * Assigns file name to parameters.
      *
      * @param string $name Filename with extension. (case sensitive)
-     * @return bool|\tei187\QR_image2svg\Converter\GD
+     * @return bool|\tei187\QrImage2Svg\Converter\GD
      */
     protected function setFile(string $name) {
         if(!is_null($name)) {
