@@ -16,9 +16,9 @@ class ImageMagick extends Converter {
      * @param integer|null $threshold Threshold (of FF value) over which the tile is considered blank.
      * @param boolean $prefix Switch. On true places "magick" prefix in commands (enviroment-specific).
      */
-    function __construct(string $file = null, string $session = null, int $steps = null, int $threshold = null, bool $prefix = true) {
-        if(!is_null($session)) $this->setSession($session);
-        if(!is_null($file)) $this->setFile($file);
+    function __construct(string $path = null, string $outputDir = null, int $steps = null, int $threshold = null, bool $prefix = true) {
+        if(!is_null($path)) $this->setPath($path);
+        if(!is_null($outputDir)) $this->setDir($outputDir);
         if(!is_null($steps)) $this->setParamsStep($steps);
         if(!is_null($threshold)) $this->setParamsThreshold($threshold);
         $this->setPrefix($prefix);

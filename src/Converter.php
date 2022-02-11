@@ -3,8 +3,8 @@ namespace tei187\QrImage2Svg;
 use \tei187\QrImage2Svg\Resources\MIME as MIME;
 
 abstract class Converter {
-    protected $file = null;
-    protected $session = null;
+    protected $path = null;
+    protected $outputDir = null;
     protected $params = [
         'step' => 1,
         'threshold' => 127
@@ -34,65 +34,56 @@ abstract class Converter {
      * @param integer|null $steps Steps equaling pixels width or height of one tile in QR code.
      * @param integer|null $threshold Threshold (of FF value) over which the tile is considered blank.
      */
-    function __construct(string $file = null, string $session = null, int $steps = null, int $threshold = null) {
-        if(!is_null($file)) $this->setFile($file);
-        if(!is_null($session)) $this->setSession($session);
+    function __construct(string $path = null, string $outputDir = null, int $steps = null, int $threshold = null) {
+        if(!is_null($path)) $this->setPath($path);
+        if(!is_null($outputDir)) $this->setDir($outputDir);
         if(!is_null($steps)) $this->setParamsStep($steps);
         if(!is_null($threshold)) $this->setParamsThreshold($threshold);
     }
 
     /**
-     * Checks if session folder exists.
-     *
-     * @return boolean
-     */
-    protected function checkSession() : bool {
-        if(!is_null($this->session)) {
-            if(file_exists("process/" . $this->session)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
      * Returns expected path to file.
      *
-     * @return boolean|string
+     * @return null|string
      */
-    protected function getPath() {
-        if(!is_null($this->file) && $this->checkSession()) {
-            return "process/" . $this->session . "/" . $this->file;
-        }
-        return false;
+    public function getPath() {
+        return $this->path;
     }
 
     /**
      * Returns expected path to directory.
      *
-     * @return boolean|string
+     * @return null|string
      */
-    protected function getDirPath() {
-        if($this->checkSession()) {
-            return "process/" . $this->session . "/";
-        }
-        return false;
+    public function getOutputDir() {
+        return $this->outputDir;
     }
 
     /**
      * Assigns file name to parameters.
      *
      * @param string $name Filename with extension. (case sensitive)
-     * @return bool|\tei187\QrImage2Svg\Converter\GD
+     * @return bool|\tei187\QrImage2Svg\Converter\GD|\tei187\QrImage2Svg\Converter\ImageMagick
      */
-    protected function setFile(string $name) {
-        if(!is_null($name)) {
-            $this->file = $name;
+    protected function setPath(string $path) {
+        if(!is_null($path)) {
+            $this->path = $path;
             if(MIME::check($this->getPath()) !== false) {
                 return $this;
             }
         }
-        $this->file = null;
+        $this->path = null;
+        return false;
+    }
+
+    protected function setDir(string $outputDir) {
+        if(!is_null($outputDir)) {
+            $this->outputDir = $outputDir;
+            if(file_exists($outputDir) && is_dir($outputDir)) {
+                return $this;
+            }
+        }
+        $this->outputDir = null;
         return false;
     }
 
@@ -202,7 +193,7 @@ abstract class Converter {
         $svgStr .= "\t</g>\r\n";
         $svgStr .= "</svg>";
     
-        $path = $this->getDirPath() !== false ? $this->getDirPath() : null;
+        $path = $this->getOutputDir() !== null ? $this->getOutputDir() : null;
         file_put_contents($path."output.svg", $svgStr);
         return $svgStr;
     }
