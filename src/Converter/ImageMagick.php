@@ -3,6 +3,8 @@
 namespace tei187\QrImage2Svg\Converter;
 use \tei187\QrImage2Svg\Converter as Converter;
 
+use function PHPSTORM_META\type;
+
 class ImageMagick extends Converter {
     private $withPrefix = true;
     private $pixelData = null;
@@ -48,39 +50,85 @@ class ImageMagick extends Converter {
     /**
      * Looks up color value of a pixel per coordinates.
      *
-     * @param integer $x X coordinate.
-     * @param integer $y Y coordinate.
+     * @param integer $x Position X.
+     * @param integer $y Position Y.
      * @param null $img Leftover from different class.
-     * @return array
+     * @return array|string|int
      */
-    protected function findColorAtIndex(int $x, int $y, $img = null) : array {
-        preg_match("/^$x,$y,[a-zA-Z()-,0-9]+/m", $this->pixelData, $pixel);
-        preg_match("/(\d+)[,](\d+)[,](\d+)/", $pixel[0], $pixel);
-        $color = [
-            'red' => $pixel[1],
-            'green' => $pixel[2],
-            'blue' => $pixel[3],
-        ];
+    protected function findColorAtIndex(int $x = null, int $y = null, $img = null) {
+        $key = $x."x".$y;
+        $c = count($this->pixelData[$key]); // count of channels/values found in array
+
+        switch($c) {
+            case 1: 
+                $color = $this->pixelData[$key][0]; 
+                break;
+            case 3:
+                $color = [
+                      'red' => $this->pixelData[$key][0],
+                    'green' => $this->pixelData[$key][1],
+                     'blue' => $this->pixelData[$key][2],
+                ];
+                break;
+            case 4:
+                $color = [
+                       'cyan' => $this->pixelData[$key][0],
+                    'magenta' => $this->pixelData[$key][1],
+                     'yellow' => $this->pixelData[$key][2],
+                      'black' => $this->pixelData[$key][3],
+                ];
+                break;
+            default: 
+                $color = false;
+        }
         return $color;
+    }
+
+    /**
+     * Finds color data on a pixel of center of each tile in the QR code.
+     * 
+     * @return void
+     */
+    public function getPixelData() : void {
+        $temp = [];
+        
+        foreach($this->calculated['blockMiddlePositions'] as $c) {
+            $temp[] = "%[pixel:s.p{".$c[0].",".$c[1]."}]";
+        }
+        
+        $temp_chunks = array_chunk($temp, 50);
+        unset($temp);
+        $output = "";
+
+        foreach($temp_chunks as $chunk) {
+            $str = implode("..", $chunk);
+            $output .= shell_exec("magick identify -format \(".$str."\) ".$this->path)."..";
+        }
+        unset($temp_chunks, $chunk);
+        
+        $temp = array_map(
+            function($v) {
+                if($v !== null && strlen(trim($v)) > 0) {
+                    preg_match_all("/\d+/", $v, $match); 
+                    return $match[0];
+                }
+            }, explode("..", trim($output, "."))
+        );
+        unset($output, $match);
+
+        foreach($temp as $k => $v) {
+            $pos = [
+                'x' => $this->calculated['blockMiddlePositions'][$k][0],
+                'y' => $this->calculated['blockMiddlePositions'][$k][1]
+            ];
+            $key = $pos['x']."x".$pos['y'];
+            $this->pixelData[$key] = $v;
+        }
     }
 
     /**
      * @todo SECURE FILE PATH INSERTION
      */
-
-     /**
-      * Uses ImageMagick's `sparse-color:` option to get info on each pixel's values.
-      *
-      * @return void
-      */
-    private function getPixelData() {
-        $cmd = $this->checkPrefix() . "convert " . $this->getPath() . " sparse-color:";
-        $this->pixelData = str_replace(
-            " ", 
-            "\r\n", 
-            shell_exec($cmd)
-        );
-    }
 
     /**
      * Sets properties for image dimensions and returns as array.
@@ -100,13 +148,12 @@ class ImageMagick extends Converter {
      *
      * @return string SVG formatted QR code.
      */
-    public function output() {
-        $this->getPixelData();
+    public function output() : string {
         $this->getDimensions();
         $this->setMaxSteps();
         $this->setMiddlePositions();
+        $this->getPixelData();
         $this->setFillByBlockMiddlePositions();
-
         return $this->generateSVG();
     }
 }

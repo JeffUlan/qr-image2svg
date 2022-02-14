@@ -5,16 +5,31 @@ use \tei187\QrImage2Svg\Resources\MIME as MIME;
 abstract class Converter {
     protected $path = null;
     protected $outputDir = null;
+    /**
+     * Parameters used to properly parse color data of the QR code.
+     *
+     * @var array
+     */
     protected $params = [
         'step' => 1,
         'threshold' => 127
     ];
 
+    /**
+     * Holds parameters concerning files.
+     *
+     * @var array
+     */
     protected $image = [
         'w' => 0,
         'h' => 0,
         'obj' => null,
     ];
+    /**
+     * Holds all values used to calculations.
+     *
+     * @var array
+     */
     protected $calculated = [
         'stepsInAxis' => [
             'x' => 0,
@@ -24,6 +39,11 @@ abstract class Converter {
 
         ],
     ];
+    /**
+     * Holds positions of each filled tile to pass to SVG generator.
+     *
+     * @var array
+     */
     protected $matrix = [];
 
     /**
@@ -179,13 +199,13 @@ abstract class Converter {
      *
      * @return string
      */
-    protected function generateSVG() : string {
+    protected function generateSVG() {
         $w = $this->calculated['stepsInAxis']['x'];
         $h = $this->calculated['stepsInAxis']['y'];
 
         $svgStr = NULL;
         $svgStr .= "<svg id='svg-drag' version=\"1.2\" baseProfile=\"full\" viewbox=\"0 0 $w $h\" style=\"shape-rendering: optimizespeed; shape-rendering: crispedges; min-width: ".($w*2)."px;\">\r\n";
-        $svgStr .= "\t<g fill=\"#000000 icc-color(cmyk, 0, 0, 0, 1)\">\r\n";
+        $svgStr .= "\t<g fill=\"#000000\">\r\n";
         foreach($this->matrix as $fill) {
             $coords = explode(",", $fill, 2);
             $svgStr .= "\t\t<rect x=\"$coords[0]\" y=\"$coords[1]\" width=\"1\" height=\"1\" />\r\n";
@@ -194,20 +214,39 @@ abstract class Converter {
         $svgStr .= "</svg>";
     
         $path = $this->getOutputDir() !== null ? $this->getOutputDir() : null;
-        file_put_contents($path."output.svg", $svgStr);
+        file_put_contents($path."/output.svg", $svgStr);
         return $svgStr;
+
     }
 
     /**
      * Checks against threshold parameter, in order to qualify wether the position resembles a QR tile.
      *
-     * @param array $color Array holding color values per channel ['red', 'green', 'blue'].
+     * @param array|string|int $color Array holding color values per channel ['red', 'green', 'blue'].
      * @param string|null $channel Channel to check against.
      * @return boolean
      */
-    protected function decideOnColor(array $color, string $channel = null) : bool {
+    protected function decideOnColor($color, string $channel = null) : bool {
         if(is_null($channel)) {
-            $avg = floor(( $color['red'] + $color['green'] + $color['blue'] ) / 3);
+            if(is_array($color)) {
+                switch(count($color)) {
+                    case 1:
+                        // grayscale
+                        $avg = $color[0];
+                        break;
+                    case 3:
+                        // rgb
+                        $avg = floor(( $color['red'] + $color['green'] + $color['blue'] ) / 3);
+                        break;
+                    case 4:
+                        // cmyk
+                        $avg = floor(( $color['cyan'] + $color['magenta'] + $color['yellow'] + $color['black'] / 4));
+                        break;
+                    // @todo Are those averages making sense?
+                }
+            } else {
+                $avg = $color;
+            }
             if($avg >= $this->params['threshold']) {
                 return false;
             }
