@@ -190,7 +190,7 @@
         protected function _rescaleImage(int $w, int $h) {
             $this->image['x'] = $w;
             $this->image['y'] = $h;
-            shell_exec($this->_getPrefix()."convert {$this->path} -resize {$w}x{$h} -colorspace RGB {$this->inputPath}");
+            shell_exec($this->_getPrefix()."convert {$this->inputPath} -resize {$w}x{$h} -colorspace RGB {$this->inputPath}");
         }
 
         /**
