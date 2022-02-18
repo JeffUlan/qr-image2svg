@@ -1,5 +1,7 @@
 # QR image 2 SVG converter
 
+[DEMO APP](https://qrgen.xowergs.wirt16.bhlink.pl) (not user friendly UX or UI)
+
 ## About
 Library meant to easily convert bitmap image-based QR codes to SVG equivalent form. Supports GD extension and ImageMagick.
 
