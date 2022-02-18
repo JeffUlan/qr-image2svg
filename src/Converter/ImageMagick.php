@@ -1,162 +1,212 @@
 <?php
 
-namespace tei187\QrImage2Svg\Converter;
-use \tei187\QrImage2Svg\Converter as Converter;
+    namespace tei187\QrImage2Svg\Converter;
+    use \tei187\QrImage2Svg\Converter as Converter;
 
-use function PHPSTORM_META\type;
+    class ImageMagick extends Converter {
+        private $usePrefix = true;
 
-class ImageMagick extends Converter {
-    private $withPrefix = true;
-    private $pixelData = null;
-    
-    /**
-     * Constructor.
-     *
-     * @param string|null $file Filename with extension that is going to be processed.
-     * @param string|null $session Session directory.
-     * @param integer|null $steps Steps equaling pixels width or height of one tile in QR code.
-     * @param integer|null $threshold Threshold (of FF value) over which the tile is considered blank.
-     * @param boolean $prefix Switch. On true places "magick" prefix in commands (enviroment-specific).
-     */
-    function __construct(string $path = null, string $outputDir = null, int $steps = null, int $threshold = null, bool $prefix = true) {
-        if(!is_null($path)) $this->setPath($path);
-        if(!is_null($outputDir)) $this->setDir($outputDir);
-        if(!is_null($steps)) $this->setParamsStep($steps);
-        if(!is_null($threshold)) $this->setParamsThreshold($threshold);
-        $this->setPrefix($prefix);
-    }
+        /**
+         * Class constructor.
+         *
+         * @param string|null $inputPath Path leading to a image file.
+         * @param string|null $outputDir Path to output the results.
+         * @param integer|null $paramSteps Steps describing the quantity of tiles per axis in QR code.
+         * @param integer $paramThreshold Threshold used to differentiate filled and empty QR tiles.
+         * @param string|null $paramThresholdChannel Currently not used.
+         * @param boolean $usePrefix Boolean flag if `magick` command prefix should be used (environment specific).
+         */
+        function __construct(?string $inputPath, ?string $outputDir, ?int $paramSteps = null, int $paramThreshold = 127, ?string $paramThresholdChannel = null, bool $usePrefix = true) {
+            $this->_setInputPath($inputPath); // 1. check if input path is proper and exists (if it is file)
+            $this->_setOutputDir($outputDir); // 2. check if output dir is proper, in app scope and exists (if it is directory)
+            $this->_setParamSteps($paramSteps); // 3. assign parameter for steps (can't be lower than smallest QR)
+            $this->_setParamThreshold($paramThreshold); // 4. assign parameter for threshold (must be 0-255)
 
-    /**
-     * Sets prefix on true.
-     *
-     * @param boolean $prefix
-     * @return self
-     */
-    public function setPrefix(bool $prefix = true) : self {
-        $this->withPrefix = $prefix;
-        return $this;
-    }
+            if($usePrefix) $this->usePrefix = true;
 
-    /**
-     * Checks wether prefix is to be applied.
-     *
-     * @return string
-     */
-    private function checkPrefix() : string {
-        $prefix = $this->withPrefix ? "magick " : "";
-        return $prefix;
-    }
-
-    /**
-     * Looks up color value of a pixel per coordinates.
-     *
-     * @param integer $x Position X.
-     * @param integer $y Position Y.
-     * @param null $img Leftover from different class.
-     * @return array|string|int
-     */
-    protected function findColorAtIndex(int $x = null, int $y = null, $img = null) {
-        $key = $x."x".$y;
-        $c = count($this->pixelData[$key]); // count of channels/values found in array
-
-        switch($c) {
-            case 1: 
-                $color = $this->pixelData[$key][0]; 
-                break;
-            case 3:
-                $color = [
-                      'red' => $this->pixelData[$key][0],
-                    'green' => $this->pixelData[$key][1],
-                     'blue' => $this->pixelData[$key][2],
-                ];
-                break;
-            case 4:
-                $color = [
-                       'cyan' => $this->pixelData[$key][0],
-                    'magenta' => $this->pixelData[$key][1],
-                     'yellow' => $this->pixelData[$key][2],
-                      'black' => $this->pixelData[$key][3],
-                ];
-                break;
-            default: 
-                $color = false;
+            // 5. check and assign dimensions
+            if($this->inputPath !== null) {
+                $this->_setImageDimensions( $this->_retrieveImageSize() ); // set image dimensions
+                $paramSteps !== null && $this->_setParamSteps($paramSteps)  // optimize on constructor
+                    ? $this->_optimizeSizePerPixelsPerTile() 
+                    : null;
+            }
         }
-        return $color;
-    }
 
-    /**
-     * Finds color data on a pixel of center of each tile in the QR code.
-     * 
-     * @return void
-     */
-    public function getPixelData() : void {
-        $temp = [];
-        
-        foreach($this->calculated['blockMiddlePositions'] as $c) {
-            $temp[] = "%[pixel:s.p{".$c[0].",".$c[1]."}]";
-        }
-        
-        $temp_chunks = array_chunk($temp, 50);
-        unset($temp);
-        $output = "";
+        /**
+         * Check file for image size.
+         *
+         * @return array|null `0` being width, `1` being height.
+         */
+        protected function _retrieveImageSize() : array {
+            list( $w, $h ) = 
+                explode("x", shell_exec(
+                    $this->_getPrefix() .
+                    "identify -format \"%wx%h\" " . 
+                    $this->inputPath
+                ), 2);
+                
+            $output = strlen(trim($w)) != 0 && strlen(trim($h)) != 0 
+                ? [ $w, $h ] 
+                : null;
 
-        foreach($temp_chunks as $chunk) {
-            $str = implode("..", $chunk);
-            $output .= shell_exec("magick identify -format \(".$str."\) ".$this->path)."..";
+            return $output;
         }
-        unset($temp_chunks, $chunk);
-        
-        $temp = array_map(
-            function($v) {
-                if($v !== null && strlen(trim($v)) > 0) {
-                    preg_match_all("/\d+/", $v, $match); 
-                    return $match[0];
+
+        /**
+         * Set flag wether the `magick` command prefix should be used (environment specific).
+         *
+         * @param boolean $flag
+         * @return self
+         */
+        public function _setPrefixUse(bool $flag = true) : self {
+            $this->usePrefix = $flag;
+            return $this;
+        }
+
+        /**
+         * Returns prefix or lack of it.
+         *
+         * @return string
+         */
+        private function _getPrefix() : string {
+            return $this->usePrefix ? "magick " : "";
+        }
+
+        /**
+         * Queries each tile's middle point color values.
+         *
+         * @return void
+         */
+        protected function _setTilesValues() : void {
+            // generate IM-specific syntax for each tile
+            $commandParts = [];
+            foreach($this->tilesData as $k => $values) {
+                $commandParts[] = "%[pixel:s.p{" . $values['tileMiddle']['x'] . "," . $values['tileMiddle']['y'] . "}]";
+            }
+            // chunk IM-specific syntax array (by low value of 50, due to shell limit)
+            $commandChunks = array_chunk($commandParts, 50);
+            unset($commandParts);
+            
+            // getting output per chunk and merging it to $output variable
+            $output = "";
+            foreach($commandChunks as $chunk) {
+                $part = implode("..", $chunk);
+                $output .= shell_exec($this->_getPrefix() . "identify -format \(" . $part . "\) " . $this->inputPath) ."..";
+            }
+            unset($commandChunks, $chunk);
+
+            // mapping output
+            $temp = array_map(
+                function($v) {
+                    if($v !== null && strlen(trim($v)) > 0) {
+                        preg_match_all("/\d+/", $v, $match);
+                        return $match[0];
+                    }
+                }, explode("..", trim($output, "."))
+            );
+            unset($output, $match);
+
+            // save values
+            foreach($temp as $k => $v) {
+                $this->tilesData[$k]['values'] = $v;
+            }
+            unset($temp, $k, $v);
+        }
+
+        /**
+         * Checks whether the tile should be filled or blank.
+         *
+         * @return void
+         */
+        protected function _probeTilesForColor() {
+            $colorType = $this->_getColorType();
+            $passedAs = strpos($colorType, "rgb")  !== false ? "rgb"  : "undefined";
+            $passedAs = strpos($colorType, "gray") !== false ? "gray" : $passedAs;
+            $passedAs = strpos($colorType, "cmyk") !== false ? "cmyk" : $passedAs;
+
+            foreach($this->tilesData as $tile) {
+                switch( $passedAs ) {
+                    case 'gray': // assume grayscale
+                        $color = $tile['values'][0];
+                        $avg = round($color, 1);
+                        break;
+                    case 'rgb': // assume rgb
+                        $color = [
+                            'red'   => $tile['values'][0],
+                            'green' => $tile['values'][1],
+                            'blue'  => $tile['values'][2]
+                        ];
+                        $avg = round(array_sum($color) / 3, 1);
+                        break;
+                    case 'cmyk':
+                        $color = [
+                            'cyan'    => $tile['values'][0],
+                            'magenta' => $tile['values'][1],
+                            'yellow'  => $tile['values'][2],
+                            'black'   => $tile['values'][3],
+                        ];
+                        $colorRGB = [
+                            'red'   => 255 * (1 - ($color['cyan'] / 100))    * (1 - ($color['black'] / 100)),
+                            'green' => 255 * (1 - ($color['magenta'] / 100)) * (1 - ($color['black'] / 100)),
+                            'blue'  => 255 * (1 - ($color['yellow'] / 100))  * (1 - ($color['black'] / 100))
+                        ];
+                        $avg = round(array_sum($colorRGB) / 3, 1);
+                        break;
+                    default:
+                        // some fail here...
+                        $color = false;
+                        $avg = 255;
                 }
-            }, explode("..", trim($output, "."))
-        );
-        unset($output, $match);
 
-        foreach($temp as $k => $v) {
-            $pos = [
-                'x' => $this->calculated['blockMiddlePositions'][$k][0],
-                'y' => $this->calculated['blockMiddlePositions'][$k][1]
-            ];
-            $key = $pos['x']."x".$pos['y'];
-            $this->pixelData[$key] = $v;
+                $avg <= $this->params['threshold'] 
+                    ? $this->filledTileMatrix[] = $tile['renderAt']
+                    : null;
+                
+            }
+        }
+
+        /**
+         * Queries the image for palette type.
+         *
+         * @return string
+         */
+        protected function _getColorType() : string {
+            $t = explode(
+                "(",
+                shell_exec($this->_getPrefix()."identify -format %[pixel:s.p{1,1}] ".$this->inputPath)
+            )[0];
+        
+            return $t;
+        }
+
+        /**
+         * Rescales image per passed arguments. For QR it should always be the same image.
+         *
+         * @param integer $w
+         * @param integer $h
+         * @return void
+         */
+        protected function _rescaleImage(int $w, int $h) {
+            $this->image['x'] = $w;
+            $this->image['y'] = $h;
+            shell_exec($this->_getPrefix()."convert {$this->path} -resize {$w}x{$h} -colorspace RGB {$this->path}");
+        }
+
+        /**
+         * Generates SVG image per input parameters.
+         *
+         * @return false|string
+         */
+        public function output() {
+            if($this->inputPath == null) return false;
+            if(!$this->image['optimized']) $this->_optimizeSizePerPixelsPerTile();
+            $this->_setTilesData();
+            $this->_setTilesValues();
+            $this->_probeTilesForColor();
+            $this->tilesData = null;
+            return $this->generateSVG();
         }
     }
-
-    /**
-     * @todo SECURE FILE PATH INSERTION
-     */
-
-    /**
-     * Sets properties for image dimensions and returns as array.
-     *
-     * @return void
-     */
-    protected function getDimensions() : void {
-        $cmd = $this->checkPrefix() . "identify -format \"%wx%h\" ". $this->getPath();
-        list(
-            $this->image['w'], 
-            $this->image['h']
-        ) = explode("x", shell_exec($cmd), 2);
-    }
-
-    /**
-     * Dummy output method.
-     *
-     * @return string SVG formatted QR code.
-     */
-    public function output() : string {
-        $this->getDimensions();
-        $this->setMaxSteps();
-        $this->setMiddlePositions();
-        $this->getPixelData();
-        $this->setFillByBlockMiddlePositions();
-        return $this->generateSVG();
-    }
-}
-
 
 ?>

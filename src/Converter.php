@@ -1,266 +1,272 @@
 <?php
-namespace tei187\QrImage2Svg;
-use \tei187\QrImage2Svg\Resources\MIME as MIME;
+    namespace tei187\QrImage2Svg;
+    use tei187\QrImage2Svg\Resources\MIME as MIME;
 
-abstract class Converter {
-    protected $path = null;
-    protected $outputDir = null;
-    /**
-     * Parameters used to properly parse color data of the QR code.
-     *
-     * @var array
-     */
-    protected $params = [
-        'step' => 1,
-        'threshold' => 127
-    ];
+    abstract class Converter {
+        /** @var null|string Path leading to file. */
+        protected $inputPath;
+        /** @var null|string Output path. */
+        protected $outputDir;
+        /**
+         * Parameters used for processing.
+         *  $this->params = [
+         *   'steps'     => (int) Amount of tiles per axis.
+         *   'threshold' => (int) Threshold level.
+         *   'channel'   => (string) Specific channel to check threshold on.
+         *  ]
+         * @var int[]|string[]
+         */
+        protected $params = [
+            'steps' => 21,
+            'threshold' => 127,
+            'channel' => 'red'
+        ];
+        /** @var null[]|int[]|\GdImage[]|resource[] Image-specific information and objects. */
+        protected $image = [
+            'x' => null,
+            'y' => null,
+            'obj' => null,
+            'optimized' => false,
+        ];
+        /**
+         * @var int[] Information concerning each QR tile. Keys: `'renderAt'`, `'tileMiddle'`, `'values'`.
+         * `renderAt` being a 1:1-ratio-based position in new SVG. `tileMiddle` holds data of the middles of each QR tile. `values` holds data about the value found in the middle of each QR tile.
+         */
+        protected $tilesData = [];
+        /** @var int[] Holds positions to render new QR tiles. */
+        protected $filledTileMatrix = [];
+        /**
+         * @var null|int Width/height of the QR tile in pixels.
+         */
+        protected $pixelsPerTile = null;
 
-    /**
-     * Holds parameters concerning files.
-     *
-     * @var array
-     */
-    protected $image = [
-        'w' => 0,
-        'h' => 0,
-        'obj' => null,
-    ];
-    /**
-     * Holds all values used to calculations.
-     *
-     * @var array
-     */
-    protected $calculated = [
-        'stepsInAxis' => [
-            'x' => 0,
-            'y' => 0,
-        ],
-        'blockMiddlePositions' => [
-
-        ],
-    ];
-    /**
-     * Holds positions of each filled tile to pass to SVG generator.
-     *
-     * @var array
-     */
-    protected $matrix = [];
-
-    /**
-     * Constructor.
-     *
-     * @param string|null $file Filename with extension that is going to be processed.
-     * @param string|null $session Session directory.
-     * @param integer|null $steps Steps equaling pixels width or height of one tile in QR code.
-     * @param integer|null $threshold Threshold (of FF value) over which the tile is considered blank.
-     */
-    function __construct(string $path = null, string $outputDir = null, int $steps = null, int $threshold = null) {
-        if(!is_null($path)) $this->setPath($path);
-        if(!is_null($outputDir)) $this->setDir($outputDir);
-        if(!is_null($steps)) $this->setParamsStep($steps);
-        if(!is_null($threshold)) $this->setParamsThreshold($threshold);
-    }
-
-    /**
-     * Returns expected path to file.
-     *
-     * @return null|string
-     */
-    public function getPath() {
-        return $this->path;
-    }
-
-    /**
-     * Returns expected path to directory.
-     *
-     * @return null|string
-     */
-    public function getOutputDir() {
-        return $this->outputDir;
-    }
-
-    /**
-     * Assigns file name to parameters.
-     *
-     * @param string $name Filename with extension. (case sensitive)
-     * @return bool|\tei187\QrImage2Svg\Converter\GD|\tei187\QrImage2Svg\Converter\ImageMagick
-     */
-    protected function setPath(string $path) {
-        if(!is_null($path)) {
-            $this->path = $path;
-            if(MIME::check($this->getPath()) !== false) {
-                return $this;
-            }
+        /**
+         * Class constructor.
+         *
+         * @param string|null $inputPath Path leading to a image file.
+         * @param string|null $outputDir Path to output the results.
+         * @param integer|null $paramSteps Steps describing the quantity of tiles per axis in QR code.
+         * @param integer $paramThreshold Threshold used to differentiate filled and empty QR tiles.
+         * @param string|null $paramThresholdChannel Currently not used.
+         */
+        function __construct(?string $inputPath, ?string $outputDir, ?int $paramSteps = null, int $paramThreshold = 127, ?string $paramThresholdChannel = null) {
+            $this->_setInputPath($inputPath); // 1. check if input path is proper and exists (if it is file)
+            $this->_setOutputDir($outputDir); // 2. check if output dir is proper, in app scope and exists (if it is directory)
+            $this->_setParamSteps($paramSteps); // 3. assign parameter for steps (can't be lower than smallest QR)
+            $this->_setParamThreshold($paramThreshold); // 4. assign parameter for threshold (must be 0-255)
+            
+            if($this->inputPath !== null && $paramSteps !== null) $this->_optimizeSizePerPixelsPerTile();
         }
-        $this->path = null;
-        return false;
-    }
 
-    protected function setDir(string $outputDir) {
-        if(!is_null($outputDir)) {
+        /**
+         * Checks if passed path is proper. If `isFile` flag is TRUE, also checks if the files MIME type is supported.
+         * 
+         * @param string $path Path to file.
+         * @param boolean $isFile If TRUE, checks if the file is supported by the class.
+         * @return boolean
+         * @static
+         */
+        static protected function checkPath(string $path, bool $isFile = false) : bool {
+            if(realpath($path) !== false) {
+                return $isFile ? self::checkMIME($path) : is_dir($path);
+            }
+            return false;
+        }
+
+        /**
+         * Checks MIME type of the file path specified by the argument. Returns TRUE if supported, FALSE if otherwise or on error.
+         *
+         * @param string $path Path to file.
+         * @return boolean
+         * @static
+         */
+        static protected function checkMIME(string $path) : bool {
+            if(MIME::check($path) !== false) {
+                return true;
+            }
+            return false;
+        }
+
+        /**
+         * Assigns `$this->inputPath`, if `self::checkPath` returns TRUE. Otherwise, sets to `null`.
+         *
+         * @param string|null $inputPath
+         * @return boolean
+         */
+        protected function _setInputPath(?string $inputPath = null) : bool {
+            $this->image['optimized'] = false;
+            if(!self::checkPath($inputPath, true)) {
+                $this->inputPath = null;
+                return false;
+            }
+
+            $this->inputPath = $inputPath;
+            return true;
+        }
+
+        /**
+         * Assigns `$this->outputDir`, if `self::checkPath` returns TRUE. Otherwise, sets to `null`.
+         *
+         * @param string|null $outputDir
+         * @return boolean
+         */
+        protected function _setOutputDir(?string $outputDir = null) : bool {
+            if(!self::checkPath($outputDir)) {
+                $this->outputDir = null;
+                return false;
+            }
+
             $this->outputDir = $outputDir;
-            if(file_exists($outputDir) && is_dir($outputDir)) {
-                return $this;
+            return true;
+        }
+
+        /**
+         * Checks if value is proper, and then assigns to `$this->params['steps']`.
+         *
+         * @param integer|null $steps
+         * @return boolean
+         */
+        protected function _setParamSteps(?int $steps) : bool {
+            if(!is_int($steps) || $steps < 21) return false;
+            
+            $this->params['steps'] = $steps;
+            return true;
+        }
+
+        /**
+         * Checks if value is proper, and then assigns to `$this->params['threshold']`.
+         *
+         * @param integer|null $steps
+         * @return boolean
+         */
+        protected function _setParamThreshold(?int $v) : bool {
+            // check if int: use average of pixel
+            // check if array: channel key => pixel color by channel
+            if(!is_int($v) || ($v < 0 || $v > 255)) return false;
+
+            $this->params['threshold'] = $v;
+            return true;
+        }
+
+        /**
+         * Sets image dimensions in `$this->image`, if proper.
+         *
+         * @param array|null $dimensions
+         * @return boolean
+         */
+        protected function _setImageDimensions(?array $dimensions) : bool {
+            if(!is_null($dimensions) && is_array($dimensions) && count($dimensions) == 2) {
+                $this->image['x'] = intval($dimensions[0]);
+                $this->image['y'] = intval($dimensions[1]);
+                return true;
+            }
+
+            // on fail
+            list( $this->image['x'], $this->image['y'] ) = null;
+            return false;
+        }
+
+        /**
+         * Optimizes the image per the calculation of current dimensions and number of QR tiles per axis. 
+         * 
+         * If the outcome is not integer (or has a modulo of 1 higher than 0), resizes the image to optimal dimensions, so it is easier to process further on.
+         *
+         * @return void
+         */
+        protected function _optimizeSizePerPixelsPerTile() : void {
+            if(!is_null($this->image['x']) && !is_null($this->image['y'])) {
+                // calc pixels per tile
+                $perTile = $this->image['x'] / $this->params['steps'];
+                $this->pixelsPerTile = 
+                  fmod($perTile, 1) !== 0 
+                    ? intval(round($perTile, 0, PHP_ROUND_HALF_EVEN))
+                    : intval($perTile);
+
+                // rescale if values end up different
+                if($perTile != $this->pixelsPerTile) {
+                    $this->_rescaleImage(
+                        $this->params['steps'] * $this->pixelsPerTile, 
+                        $this->params['steps'] * $this->pixelsPerTile
+                    );
+                }
+                $this->image['optimized'] = true;
             }
         }
-        $this->outputDir = null;
-        return false;
-    }
 
-    /**
-     * Calculates how many steps will be taken by each axis to probe the file (dimension / step length).
-     *
-     * @return void
-     */
-    protected function setMaxSteps() : void {
-        $this->calculated['stepsInAxis']['x'] = floor($this->image['w'] / $this->params['step']);
-        $this->calculated['stepsInAxis']['y'] = floor($this->image['h'] / $this->params['step']);
-    }
-
-    /**
-     * Calculates middle position of each tile (based on dimension and max steps).
-     *
-     * @return void
-     */
-    protected function setMiddlePositions() {
-        for($y = 1; $y <= $this->calculated['stepsInAxis']['y']; $y++) {
-            for($x = 1; $x <= $this->calculated['stepsInAxis']['x']; $x++) {
-                $this->calculated['blockMiddlePositions'][] = [
-                    floor(($x * $this->params['step']) - ($this->params['step'] / 2)),
-                    floor(($y * $this->params['step']) - ($this->params['step'] / 2))
-                ];
-            }
-        }
-    }
-
-    /**
-     * Assigns session ID.
-     *
-     * @param string|null $session
-     * @return void
-     */
-    protected function setSession(string $session = null) {
-        if(!is_null($session) && strlen(trim($session)) != 0) {
-            $this->session = $session;
-        } else {
-            $this->session = null;
-        }
-        return $this;
-    }
-
-    /**
-     * Sets parameters.
-     *
-     * @param integer|null $step
-     * @param integer|null $threshold
-     * @return self
-     */
-    public function setParams(int $step = null, int $threshold = null) : self {
-        if(!is_null($step))      $this->setParamsStep($step);
-        if(!is_null($threshold)) $this->setParamsThreshold($threshold);
-        return $this;
-    }
-
-    /**
-     * Sets steps parameter.
-     *
-     * @param integer $v
-     * @return void
-     */
-    protected function setParamsStep(int $v) : void { $this->params['step'] = $v; } 
-
-    /**
-     * Sets threshold parameter.
-     *
-     * @param null|integer $v Value [0-255]. If null, substitutes for default 127.
-     * @return void
-     */
-    protected function setParamsThreshold(int $v = null) : void { $this->params['threshold'] = !is_null($v) ? $v : 127; }
-
-    /**
-     * Sets tiles to be filled with color.
-     *
-     * @return void
-     */
-    protected function setFillByBlockMiddlePositions() : void {
-        $this->matrix = [];
-        if($this->image['obj'] !== false) {
-            foreach($this->calculated['blockMiddlePositions'] as $c) {
-                $rgb = $this->findColorAtIndex($c[0], $c[1], $this->image['obj']);
-                if($this->decideOnColor($rgb)) {
-                    $this->matrix[] = ( floor($c[0] / $this->params['step']) ) . "," . ( floor($c[1] / $this->params['step']) );
+        /**
+         * Sets initial data of each tile, namely it's render position in new QR, tiles middle points and blank for values.
+         *
+         * @return void
+         */
+        protected function _setTilesData() : void {
+            $this->tilesData = [];
+            for($y = 0; $y < $this->params['steps']; $y++) {
+                // each y axis
+                for($x = 0; $x < $this->params['steps']; $x++) {
+                    // each x axis
+                    $this->tilesData[] = [
+                        'renderAt' => [
+                            'x' => $x, 
+                            'y' => $y
+                          ],
+                        'tileMiddle' => [
+                            'x' => intval(floor(($x * $this->pixelsPerTile) + ($this->pixelsPerTile / 2))),
+                            'y' => intval(floor(($y * $this->pixelsPerTile) + ($this->pixelsPerTile / 2))),
+                          ],
+                        'values' => null
+                    ];
                 }
             }
         }
-    }
 
-    /**
-     * Generates SVG, based on input.
-     *
-     * @return string
-     */
-    protected function generateSVG() {
-        $w = $this->calculated['stepsInAxis']['x'];
-        $h = $this->calculated['stepsInAxis']['y'];
-
-        $svgStr = NULL;
-        $svgStr .= "<svg id='svg-drag' version=\"1.2\" baseProfile=\"full\" viewbox=\"0 0 $w $h\" style=\"shape-rendering: optimizespeed; shape-rendering: crispedges; min-width: ".($w*2)."px;\">\r\n";
-        $svgStr .= "\t<g fill=\"#000000\">\r\n";
-        foreach($this->matrix as $fill) {
-            $coords = explode(",", $fill, 2);
-            $svgStr .= "\t\t<rect x=\"$coords[0]\" y=\"$coords[1]\" width=\"1\" height=\"1\" />\r\n";
+        /**
+         * Checks if tile has a value not exceeding the threshold level. If so, passes render position to `filledTileMatrix` parameter as a filled QR tile.
+         * @deprecated 1.0
+         * @return void
+         */
+        protected function _createMatrix() : void {
+            foreach($this->tilesData as $tile) {
+                $val = is_array($tile['values']) 
+                    ? array_sum($tile['values']) / count($tile['values']) 
+                    : $tile['values'];
+                
+                if($val <= $this->threshold) 
+                    $this->filledTileMatrix[] = $tile['renderAt'];
+            }
         }
-        $svgStr .= "\t</g>\r\n";
-        $svgStr .= "</svg>";
+
+        /**
+         * Generates final SVG file.
+         *
+         * @return string SVG
+         */
+        public function generateSVG() : string {
+            $w = $this->params['steps'];
+            $h = $w;
     
-        $path = $this->getOutputDir() !== null ? $this->getOutputDir() : null;
-        file_put_contents($path."/output.svg", $svgStr);
-        return $svgStr;
-
-    }
-
-    /**
-     * Checks against threshold parameter, in order to qualify wether the position resembles a QR tile.
-     *
-     * @param array|string|int $color Array holding color values per channel ['red', 'green', 'blue'].
-     * @param string|null $channel Channel to check against.
-     * @return boolean
-     */
-    protected function decideOnColor($color, string $channel = null) : bool {
-        if(is_null($channel)) {
-            if(is_array($color)) {
-                switch(count($color)) {
-                    case 1:
-                        // grayscale
-                        $avg = $color[0];
-                        break;
-                    case 3:
-                        // rgb
-                        $avg = floor(( $color['red'] + $color['green'] + $color['blue'] ) / 3);
-                        break;
-                    case 4:
-                        // cmyk
-                        $avg = floor(( $color['cyan'] + $color['magenta'] + $color['yellow'] + $color['black'] / 4));
-                        break;
-                    // @todo Are those averages making sense?
-                }
-            } else {
-                $avg = $color;
+            $svgStr = NULL;
+            $svgStr .= "<svg id='svg-drag' version=\"1.2\" baseProfile=\"full\" viewbox=\"0 0 $w $h\" style=\"shape-rendering: optimizespeed; shape-rendering: crispedges; min-width: ".($w*2)."px;\">\r\n";
+            $svgStr .= "\t<g fill=\"#000000\">\r\n";
+            foreach($this->filledTileMatrix as $tile) {
+                $svgStr .= "\t\t<rect x=\"{$tile['x']}\" y=\"{$tile['y']}\" width=\"1\" height=\"1\" />\r\n";
             }
-            if($avg >= $this->params['threshold']) {
-                return false;
-            }
-            return true;
-        } else {
-            if($color[$channel] >= $this->params['threshold']) {
-                return false;
-            }
-            return true;
+            $svgStr .= "\t</g>\r\n";
+            $svgStr .= "</svg>";
+        
+            $path = $this->getOutputDir() !== null ? $this->getOutputDir() : null;
+            file_put_contents($path."/output.svg", $svgStr);
+            return $svgStr;
         }
-    }
 
-    abstract protected function findColorAtIndex(int $x, int $y, ?object $img);
-    abstract protected function getDimensions();
-}
+        /** Returns input path. */
+        public function getInputPath() { return $this->inputPath; }
+        /** Returns output path. */
+        public function getOutputDir() { return $this->outputDir; }
+
+        abstract protected function _setTilesValues();
+        abstract protected function _probeTilesForColor();
+        abstract protected function _retrieveImageSize();
+        abstract protected function _rescaleImage(int $w, int $h);
+    }
 
 ?>
