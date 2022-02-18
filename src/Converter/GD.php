@@ -29,6 +29,12 @@
             }
         }
 
+        /**
+         * GD image creation per function or class param.
+         *
+         * @param string|null $path Path to file. If `null` takes value from `$this->inputPath`.
+         * @return false|resource|\GdImage;
+         */
         private function _createImage(?string $path = null) {
             $path = is_null($path) && !is_null($this->inputPath) ? $this->inputPath : trim($path);
 
@@ -45,6 +51,11 @@
             return $img;
         }
 
+        /**
+         * Queries each tile's middle point color values.
+         *
+         * @return void
+         */
         protected function _setTilesValues() : void {
             foreach($this->tilesData as $k => $values) {
                 $this->tilesData[$k]['values'] = imagecolorsforindex(
@@ -58,6 +69,11 @@
             }
         }
 
+        /**
+         * Checks whether the tile should be filled or blank.
+         *
+         * @return void
+         */
         protected function _probeTilesForColor() : void {
             foreach($this->tilesData as $k => $tile) {
                 $c = $tile['values'];
@@ -79,8 +95,8 @@
             return [ $data[0], $data[1] ];
         }
 
-        /**
-         * Undocumented function
+         /**
+         * Rescales image per passed arguments. For QR it should always be the same image.
          *
          * @param integer $w
          * @param integer $h
@@ -119,6 +135,11 @@
             return false;            
         }
 
+        /**
+         * Generates SVG image per input parameters.
+         *
+         * @return false|string
+         */
         public function output() {
             if($this->inputPath == null) return false;
             $this->_createImage();
@@ -126,7 +147,7 @@
             $this->_setTilesData();
             $this->_setTilesValues();
             $this->_probeTilesForColor();
-            //$this->tilesData = null;
+            $this->tilesData = null;
             return $this->generateSVG();
         }
     }

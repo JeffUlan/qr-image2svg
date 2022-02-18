@@ -38,7 +38,7 @@
          *
          * @return array|null `0` being width, `1` being height.
          */
-        protected function _retrieveImageSize() : array {
+        protected function _retrieveImageSize() {
             list( $w, $h ) = 
                 explode("x", shell_exec(
                     $this->_getPrefix() .
