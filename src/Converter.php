@@ -182,6 +182,8 @@
                     ? intval(round($perTile, 0, PHP_ROUND_HALF_EVEN))
                     : intval($perTile);
 
+                if($this->pixelsPerTile < 10) $this->pixelsPerTile = 10;
+
                 // rescale if values end up different
                 if($perTile != $this->pixelsPerTile) {
                     $this->_rescaleImage(
