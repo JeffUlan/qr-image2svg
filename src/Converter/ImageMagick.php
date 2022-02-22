@@ -16,7 +16,7 @@
          * @param string|null $paramThresholdChannel Currently not used.
          * @param boolean $usePrefix Boolean flag if `magick` command prefix should be used (environment specific).
          */
-        function __construct(?string $inputPath, ?string $outputDir, ?int $paramSteps = null, int $paramThreshold = 127, ?string $paramThresholdChannel = null, bool $usePrefix = true) {
+        function __construct(?string $inputPath, ?string $outputDir, ?int $paramSteps = null, int $paramThreshold = 127, bool $trimImage = true, bool $usePrefix = true) {
             $this->_setInputPath($inputPath); // 1. check if input path is proper and exists (if it is file)
             $this->_setOutputDir($outputDir); // 2. check if output dir is proper, in app scope and exists (if it is directory)
             $this->_setParamSteps($paramSteps); // 3. assign parameter for steps (can't be lower than smallest QR)
@@ -26,6 +26,9 @@
 
             // 5. check and assign dimensions
             if($this->inputPath !== null) {
+                if($trimImage) {
+                    $this->_trimImage();
+                }
                 $this->_setImageDimensions( $this->_retrieveImageSize() ); // set image dimensions
                 $paramSteps !== null && $this->_setParamSteps($paramSteps)  // optimize on constructor
                     ? $this->_optimizeSizePerPixelsPerTile() 
@@ -188,9 +191,53 @@
          * @return void
          */
         protected function _rescaleImage(int $w, int $h) {
-            $this->image['x'] = $w;
-            $this->image['y'] = $h;
             shell_exec($this->_getPrefix()."convert {$this->inputPath} -resize {$w}x{$h} -colorspace RGB {$this->inputPath}");
+            $this->_setImageDimensions([$w, $h]);
+        }
+
+        /**
+         * Trims white image border, based on a simulated 200-255 RGB threshold.
+         *
+         * @return boolean
+         */
+        protected function _trimImage() : bool {
+            $g = shell_exec($this->_getPrefix()."convert {$this->inputPath} -color-threshold \"RGB(200,200,200)-RGB(255,255,255)\" -format \"%@\" info:");
+            $c = explode("+", $g);
+            $c = array_merge( 
+                explode("x", $c[0]),
+                array($c[1], $c[2]) 
+            );
+            
+            if(count($c) == 4 && ($c[0] != 0 && $c[1] != 0)) {
+                shell_exec($this->_getPrefix()."convert {$this->inputPath} -crop {$c[0]}x{$c[1]}+{$c[2]}+{$c[3]} {$this->inputPath}");
+                $this->_setImageDimensions( $this->_retrieveImageSize() );
+                return true;
+            }
+            return false;
+        }
+
+        /**
+         * Trims white image border, based on a simulated 200-255 RGB threshold. Overwrites input.
+         *
+         * @param string $path Path to image.
+         * @param boolean $prefix Use "magick" prefix on `TRUE`, null on `FALSE`.
+         * @return boolean
+         * @static
+         */
+        static function trimImage(string $path, bool $prefix = true) : bool {
+            $prefix = $prefix === true ? "magick " : null;
+            $g = shell_exec($prefix."convert {$path} -color-threshold \"RGB(200,200,200)-RGB(255,255,255)\" -format \"%@\" info:");
+            $c = explode("+", $g);
+            $c = array_merge( 
+                explode("x", $c[0]),
+                array($c[1], $c[2]) 
+            );
+            
+            if(count($c) == 4 && ($c[0] != 0 && $c[1] != 0)) {
+                shell_exec($prefix."convert {$path} -crop {$c[0]}x{$c[1]}+{$c[2]}+{$c[3]} {$path}");
+                return true;
+            }
+            return false;
         }
 
         /**

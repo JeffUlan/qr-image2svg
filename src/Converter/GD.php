@@ -12,9 +12,9 @@
          * @param string|null $outputDir Path to output the results.
          * @param integer|null $paramSteps Steps describing the quantity of tiles per axis in QR code.
          * @param integer $paramThreshold Threshold used to differentiate filled and empty QR tiles.
-         * @param string|null $paramThresholdChannel Currently not used.
+         * @param string|null $trimImage Trims white border on `TRUE`.
          */
-        function __construct(?string $inputPath, ?string $outputDir, ?int $paramSteps = null, int $paramThreshold = 127, ?string $paramThresholdChannel = null) {
+        function __construct(?string $inputPath, ?string $outputDir, ?int $paramSteps = null, int $paramThreshold = 127, bool $trimImage = null) {
             $this->_setInputPath($inputPath); // 1. check if input path is proper and exists (if it is file)
             $this->_setOutputDir($outputDir); // 2. check if output dir is proper, in app scope and exists (if it is directory)
             $this->_setParamSteps($paramSteps); // 3. assign parameter for steps (can't be lower than smallest QR)
@@ -22,6 +22,9 @@
 
             // 5. check and assign dimensions
             if($this->inputPath !== null) {
+                if($trimImage) {
+                    $this->_trimImage;
+                }
                 $this->_setImageDimensions( $this->_retrieveImageSize() ); // set image dimensions
                 $paramSteps !== null && $this->_setParamSteps($paramSteps)  // optimize on constructor
                     ? $this->_optimizeSizePerPixelsPerTile() 
@@ -37,17 +40,21 @@
          */
         private function _createImage(?string $path = null) {
             $path = is_null($path) && !is_null($this->inputPath) ? $this->inputPath : trim($path);
+            $img = self::_createFrom($path);
+            $this->image['obj'] = $img;
+            return $img;
+        }
 
-            $ext = pathinfo($this->inputPath, PATHINFO_EXTENSION);
+        static protected function _createFrom($path) {
+            $ext = pathinfo($path, PATHINFO_EXTENSION);
             switch(strtolower($ext)) {
-                case "png":   $img =  imagecreatefrompng($this->inputPath); break;
-                case "jpg":   $img = imagecreatefromjpeg($this->inputPath); break;
-                case "jpeg":  $img = imagecreatefromjpeg($this->inputPath); break;
-                case "gif":   $img =  imagecreatefromgif($this->inputPath); break;
-                case "webp":  $img = imagecreatefromwebp($this->inputPath); break;
+                case "png":   $img =  imagecreatefrompng($path); break;
+                case "jpg":   $img = imagecreatefromjpeg($path); break;
+                case "jpeg":  $img = imagecreatefromjpeg($path); break;
+                case "gif":   $img =  imagecreatefromgif($path); break;
+                case "webp":  $img = imagecreatefromwebp($path); break;
                 default;      $img = false;
             }
-            $this->image['obj'] = $img;
             return $img;
         }
 
@@ -120,19 +127,66 @@
                 $this->image['y'] = $h;
                 $this->image['obj'] = $dst;
                 
-                $ext = pathinfo($this->inputPath, PATHINFO_EXTENSION);
-                switch(strtolower($ext)) {
-                    case "png":   imagepng($this->image['obj'], $this->inputPath); break;
-                    case "jpg":   imagejpeg($this->image['obj'], $this->inputPath); break;
-                    case "jpeg":  imagejpeg($this->image['obj'], $this->inputPath); break;
-                    case "gif":   imagegif($this->image['obj'], $this->inputPath); break;
-                    case "webp":  imagewebp($this->image['obj'], $this->inputPath); break;
-                    default;      return false;
-                }
+                $this->_saveImage();   
 
                 return $this->image['obj'];
             }
             return false;            
+        }
+
+        /**
+         * Saves image to disk.
+         *
+         * @return void|false
+         */
+        protected function _saveImage() {
+            $ext = pathinfo($this->inputPath, PATHINFO_EXTENSION);
+            switch(strtolower($ext)) {
+                case "png":    imagepng($this->image['obj'], $this->inputPath); break;
+                case "jpg":   imagejpeg($this->image['obj'], $this->inputPath); break;
+                case "jpeg":  imagejpeg($this->image['obj'], $this->inputPath); break;
+                case "gif":    imagegif($this->image['obj'], $this->inputPath); break;
+                case "webp":  imagewebp($this->image['obj'], $this->inputPath); break;
+                default;      return false;
+            }
+        }
+
+        /**
+         * Trims white image border, based on a simulated 200-255 RGB threshold.
+         *
+         * @return void
+         */
+        protected function _trimImage() {
+            $dst = imagecropauto($this->image['obj'], IMG_CROP_THRESHOLD, .78);
+            if($dst !== false) {
+                $this->image['obj'] = $dst;
+                $this->_saveImage();
+                $this->_setImageDimensions( $this->_retrieveImageSize() );
+            }
+        }
+
+        /**
+         * Trims white image border, based on a simulated 200-255 RGB threshold.
+         *
+         * @param string $path Path to image.
+         * @return resource|\GdImage|false `FALSE` if filetype unsupported. GD Image `resource` or `GdImage` object if correct.
+         * @static
+         */
+        static function trimImage($path) {
+            $img = self::_createFrom($path);
+            $dst = imagecropauto($img, IMG_CROP_THRESHOLD, .78, 16777215);
+            if($dst !== false) {
+                $ext = pathinfo($path, PATHINFO_EXTENSION);
+                switch(strtolower($ext)) {
+                    case "png":    imagepng($dst, $path); break;
+                    case "jpg":   imagejpeg($dst, $path); break;
+                    case "jpeg":  imagejpeg($dst, $path); break;
+                    case "gif":    imagegif($dst, $path); break;
+                    case "webp":  imagewebp($dst, $path); break;
+                    default;      return false;
+                }
+            }
+            return $dst;
         }
 
         /**

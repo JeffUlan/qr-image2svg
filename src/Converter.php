@@ -41,24 +41,6 @@
         protected $pixelsPerTile = null;
 
         /**
-         * Class constructor.
-         *
-         * @param string|null $inputPath Path leading to a image file.
-         * @param string|null $outputDir Path to output the results.
-         * @param integer|null $paramSteps Steps describing the quantity of tiles per axis in QR code.
-         * @param integer $paramThreshold Threshold used to differentiate filled and empty QR tiles.
-         * @param string|null $paramThresholdChannel Currently not used.
-         */
-        function __construct(?string $inputPath, ?string $outputDir, ?int $paramSteps = null, int $paramThreshold = 127, ?string $paramThresholdChannel = null) {
-            $this->_setInputPath($inputPath); // 1. check if input path is proper and exists (if it is file)
-            $this->_setOutputDir($outputDir); // 2. check if output dir is proper, in app scope and exists (if it is directory)
-            $this->_setParamSteps($paramSteps); // 3. assign parameter for steps (can't be lower than smallest QR)
-            $this->_setParamThreshold($paramThreshold); // 4. assign parameter for threshold (must be 0-255)
-            
-            if($this->inputPath !== null && $paramSteps !== null) $this->_optimizeSizePerPixelsPerTile();
-        }
-
-        /**
          * Checks if passed path is proper. If `isFile` flag is TRUE, also checks if the files MIME type is supported.
          * 
          * @param string $path Path to file.
@@ -218,22 +200,6 @@
                         'values' => null
                     ];
                 }
-            }
-        }
-
-        /**
-         * Checks if tile has a value not exceeding the threshold level. If so, passes render position to `filledTileMatrix` parameter as a filled QR tile.
-         * @deprecated 1.0
-         * @return void
-         */
-        protected function _createMatrix() : void {
-            foreach($this->tilesData as $tile) {
-                $val = is_array($tile['values']) 
-                    ? array_sum($tile['values']) / count($tile['values']) 
-                    : $tile['values'];
-                
-                if($val <= $this->threshold) 
-                    $this->filledTileMatrix[] = $tile['renderAt'];
             }
         }
 

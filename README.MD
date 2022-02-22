@@ -33,12 +33,13 @@ The main reason to create this solution was my day-to-day job, where I have to h
   * `$outputDir` - the accessible path to directory in which output will be saved,
   * `$stepsPerAxis` - integer value describing how many tiles are there in a given axis of QR code,
   * `$threshold` - integer value describing the limit over which the tile will be treated as blank.
+  * `$trim` - boolean value describing whether or not the image should be trimmed (remove white border from around QR).
 
 * ### GD
   ```php
   <?php
     use tei187\QrImage2Svg\Converter\GD as GD;
-    $t = new GD($inputFile, $outputDir, $stepsPerAxis, $threshold);
+    $t = new GD($inputFile, $outputDir, $stepsPerAxis, $threshold, $trim);
     echo $t->output();
     // saves the file to specified directory and also returns string with SVG.
   ?>
@@ -47,12 +48,12 @@ The main reason to create this solution was my day-to-day job, where I have to h
   ```php
   <?php
     use tei187\QrImage2Svg\Converter\ImageMagick as ImageMagick;
-    $t = new ImageMagick($inputFile, $outputDir, $stepsPerAxis, $threshold, null, true);
+    $t = new ImageMagick($inputFile, $outputDir, $stepsPerAxis, $threshold, $trim, $prefix);
     echo $t->output();
     // saves the file to specified directory and also returns string with SVG.
   ?>
   ```
-  IM's class has more parameters in the constructor: the 5th being `channel` (not supported currently, can be left `null`); 6th being a prefix flag - if true it adds `'magick '` string to each command (I've found it to be environment specific thing, especially with older installments, but by default left `TRUE`). Also, do have in mind that in many cases IM can be slower than GD.
+  IM's class has one more parameter in the constructor: `$prefix` being a prefix flag - if true it adds `'magick '` string to each command (I've found it to be environment specific thing, especially with older installments, but by default left `TRUE`). Also, do have in mind that in many cases IM can be slower than GD.
 
 ---
 
