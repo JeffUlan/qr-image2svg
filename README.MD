@@ -70,6 +70,10 @@ The main reason to create this solution was my day-to-day job, where I have to h
 
   The probing of tiles is done by averaging color channel's values (average being `(R + G + B) / 3`). It should not matter with black and white QR codes, since filled and blank tiles should be very distinctly different. However, it may be more tricky with different hues, saturation and ligthness settings. Needs some manual input. For the time being, I suggest processing the images through by a CLUT or some such, until I expand a bit on the package.
 
+* ### Trimming
+
+  Trimming of the border is done through simulating a threshold of `200-255` and removing white margin. This may become an issue if your QR is inverted (bright fills with darker background) or both, tiles and background fills, have higher threshold than 200. In the second option, the method will return false and not trim the image.
+
 ---
 
 ## Future plans:
