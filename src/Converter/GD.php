@@ -206,17 +206,20 @@
             $dims = [ imagesx($img), imagesy($img) ];
             sort( $dims, SORT_ASC );
             
-            for( $i = 0; $i < $dims[0]; $i++ ) {
+            for( $i = 0; $i <= $dims[0]; $i++ ) {
                 $c = imagecolorsforindex($img, imagecolorat($img, $i, $i));
-                if(round(array_sum($c) / 3, 0) > 127)
-                    unset($img);
+                if(round(array_sum($c) / 3, 0) > 127) {
+                    unset($img, $c);
                     break;
+                }
             }
-            
-            if($i == $dims[0] || $i > 21)
+
+            if($i == 0)
                 return false;
-            else
-                return intval( round($dims[0] / $i, 0) );
+            else {
+                $o = intval(round($dims[0] / $i, 0));
+                return $o < 21 ? false : $o;
+            }
         }
 
         /**

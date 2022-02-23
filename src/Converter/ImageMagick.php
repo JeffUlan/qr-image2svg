@@ -277,10 +277,12 @@
                 }
             }
             
-            if($f == 0 || $f < 21)
+            if($f == 0)
                 return false;
-            else
-                return intval( round($dims[0] / $f, 0) );
+            else {
+                $o = intval(round($dims[0] / $f, 0));
+                return $o < 21 ? false : $o;
+            }
         }
 
         /**
