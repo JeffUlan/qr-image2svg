@@ -84,7 +84,7 @@
         protected function _probeTilesForColor() : void {
             foreach($this->tilesData as $k => $tile) {
                 $c = $tile['values'];
-                $avg = round(($c['red'] + $c['green'] + $c['blue']) / 3, 1);
+                $avg = round(($c['red'] + $c['green'] + $c['blue']) / 3, 0);
                 if($avg <= $this->params['threshold']) {
                     $this->filledTileMatrix[] = $tile['renderAt'];
                 }
@@ -157,7 +157,7 @@
          * @return void
          */
         protected function _trimImage() {
-            $dst = imagecropauto($this->image['obj'], IMG_CROP_THRESHOLD, .78);
+            $dst = imagecropauto($this->image['obj'], IMG_CROP_THRESHOLD, .78, 16777215);
             if($dst !== false) {
                 $this->image['obj'] = $dst;
                 $this->_saveImage();
@@ -187,6 +187,36 @@
                 }
             }
             return $dst;
+        }
+
+        /**
+         * Return suggested tiles quantity for tile grid. Should be treated more as a relative number, rather than absolute.
+         *
+         * @return false|int `Integer` with grid tiles per axis. `FALSE` if threshold did not work.
+         */
+        public function suggestTilesQuantity() {
+            if(is_null($this->image['obj']))
+                $this->_createImage($this->inputPath);
+                
+            $img = imagecropauto($this->image['obj'], IMG_CROP_THRESHOLD, .50, 255);
+            
+            if($img === false)
+                return false;
+
+            $dims = [ imagesx($img), imagesy($img) ];
+            sort( $dims, SORT_ASC );
+            
+            for( $i = 0; $i < $dims[0]; $i++ ) {
+                $c = imagecolorsforindex($img, imagecolorat($img, $i, $i));
+                if(round(array_sum($c) / 3, 0) > 127)
+                    unset($img);
+                    break;
+            }
+            
+            if($i == $dims[0] || $i > 21)
+                return false;
+            else
+                return intval( round($dims[0] / $i, 0) );
         }
 
         /**

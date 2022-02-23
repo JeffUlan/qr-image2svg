@@ -41,12 +41,16 @@
          *
          * @return array|null `0` being width, `1` being height.
          */
-        protected function _retrieveImageSize() {
+        protected function _retrieveImageSize(string $path = null) {
+            if($path == null) {
+                $path = $this->inputPath;
+            }
+
             list( $w, $h ) = 
                 explode("x", shell_exec(
                     $this->_getPrefix() .
                     "identify -format \"%wx%h\" " . 
-                    $this->inputPath
+                    $path
                 ), 2);
                 
             $output = strlen(trim($w)) != 0 && strlen(trim($h)) != 0 
@@ -217,6 +221,69 @@
         }
 
         /**
+         * Return suggested tiles quantity for tile grid. Should be treated more as a relative number, rather than absolute.
+         *
+         * @return false|int
+         */
+        public function suggestTilesQuantity() {
+            // set threshold image
+            $path = rtrim(trim($this->outputDir), "\\/") . "/temp.png";
+            shell_exec($this->_getPrefix()."convert {$this->inputPath} -color-threshold \"RGB({$this->params['threshold']},{$this->params['threshold']},{$this->params['threshold']})-RGB(255,255,255)\" -trim {$path}");
+
+            // get dimensions
+            $dims = $this->_retrieveImageSize($path);
+            $dims = is_array($dims) ? $dims : [ 0, 0 ];
+            sort( $dims, SORT_ASC );
+
+            if($dims[0] == 0)
+                return false;
+            
+            // probe
+            // - list cmd parts
+            $points = [];
+            for($i = 0; $i <= $dims[0]; $i++) {
+                $points[] = "%[pixel:s.p{" . $i . "," . $i . "}]";
+            }
+            $pointsChunks = array_chunk($points, 50);
+            unset($points);
+
+            // - chunk to limit
+            $output = "";
+            foreach($pointsChunks as $chunk) {
+                $part = implode("..", $chunk);
+                $output .= shell_exec($this->_getPrefix() . "identify -format \(" . $part . "\) " . $this->inputPath) ."..";
+            }
+            unset($pointsChunks, $chunk);
+
+            // - parse output
+            $temp = array_map(
+                function($v) {
+                    if($v !== null && strlen(trim($v)) > 0) {
+                        preg_match_all("/\d+/", $v, $match);
+                        return $match[0];
+                    }
+                }, explode("..", trim($output, "."))
+            );
+            unset($output, $match);
+
+            // find corner
+            $f = 0;
+            $i = 0;
+            foreach($temp as $k => $v) {
+                if($v[0] > 127) {
+                    $f = $k;
+                    unset($temp);
+                    break;
+                }
+            }
+            
+            if($f == 0 || $f < 21)
+                return false;
+            else
+                return intval( round($dims[0] / $f, 0) );
+        }
+
+        /**
          * Trims white image border, based on a simulated 200-255 RGB threshold. Overwrites input.
          *
          * @param string $path Path to image.
@@ -246,8 +313,10 @@
          * @return false|string
          */
         public function output() {
-            if($this->inputPath == null) return false;
-            if(!$this->image['optimized']) $this->_optimizeSizePerPixelsPerTile();
+            if($this->inputPath == null) 
+                return false;
+            if(!$this->image['optimized']) 
+                $this->_optimizeSizePerPixelsPerTile();
             $this->_setTilesData();
             $this->_setTilesValues();
             $this->_probeTilesForColor();
