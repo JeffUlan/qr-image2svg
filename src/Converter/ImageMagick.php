@@ -274,7 +274,7 @@
             $f = 0;
             $i = 0;
             foreach($temp as $k => $v) {
-                if($v[0] > 127) {
+                if($v[0] > 127 && $k >= 7) {
                     $found = true;
                     $f = $k;
                     unset($temp);

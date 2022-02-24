@@ -217,7 +217,7 @@
             $found = false;
             for( $i = 0; $i <= $maxMarkerLength; $i++ ) {
                 $c = imagecolorsforindex($img, imagecolorat($img, 0, $i));
-                if(round(array_sum($c) / 3, 0) > 127 && $i > 2) {
+                if(round(array_sum($c) / 3, 0) > 127 && $i >= 7) {
                     $found = true;
                     unset($img, $c);
                     break;
