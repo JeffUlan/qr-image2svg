@@ -56,6 +56,11 @@ Search.appendIndex(
             "summary": "Trims\u0020white\u0020image\u0020border,\u0020based\u0020on\u0020a\u0020simulated\u0020200\u002D255\u0020RGB\u0020threshold.",
             "url": "classes/tei187-QrImage2Svg-Converter-GD.html#method_trimImage"
         },                {
+            "fqsen": "\\tei187\\QrImage2Svg\\Converter\\GD\u003A\u003AsuggestTilesQuantity\u0028\u0029",
+            "name": "suggestTilesQuantity",
+            "summary": "Return\u0020suggested\u0020tiles\u0020quantity\u0020for\u0020tile\u0020grid.\u0020Should\u0020be\u0020treated\u0020more\u0020as\u0020a\u0020relative\u0020number,\u0020rather\u0020than\u0020absolute.",
+            "url": "classes/tei187-QrImage2Svg-Converter-GD.html#method_suggestTilesQuantity"
+        },                {
             "fqsen": "\\tei187\\QrImage2Svg\\Converter\\GD\u003A\u003Aoutput\u0028\u0029",
             "name": "output",
             "summary": "Generates\u0020SVG\u0020image\u0020per\u0020input\u0020parameters.",
@@ -110,6 +115,11 @@ Search.appendIndex(
             "name": "_trimImage",
             "summary": "Trims\u0020white\u0020image\u0020border,\u0020based\u0020on\u0020a\u0020simulated\u0020200\u002D255\u0020RGB\u0020threshold.",
             "url": "classes/tei187-QrImage2Svg-Converter-ImageMagick.html#method__trimImage"
+        },                {
+            "fqsen": "\\tei187\\QrImage2Svg\\Converter\\ImageMagick\u003A\u003AsuggestTilesQuantity\u0028\u0029",
+            "name": "suggestTilesQuantity",
+            "summary": "Return\u0020suggested\u0020tiles\u0020quantity\u0020for\u0020tile\u0020grid.\u0020Should\u0020be\u0020treated\u0020more\u0020as\u0020a\u0020relative\u0020number,\u0020rather\u0020than\u0020absolute.",
+            "url": "classes/tei187-QrImage2Svg-Converter-ImageMagick.html#method_suggestTilesQuantity"
         },                {
             "fqsen": "\\tei187\\QrImage2Svg\\Converter\\ImageMagick\u003A\u003AtrimImage\u0028\u0029",
             "name": "trimImage",
@@ -180,6 +190,11 @@ Search.appendIndex(
             "name": "generateSVG",
             "summary": "Generates\u0020final\u0020SVG\u0020file.",
             "url": "classes/tei187-QrImage2Svg-Converter.html#method_generateSVG"
+        },                {
+            "fqsen": "\\tei187\\QrImage2Svg\\Converter\u003A\u003A_calculateVersion\u0028\u0029",
+            "name": "_calculateVersion",
+            "summary": "Rough\u0020QR\u0020version\u0020calculator\u0020and\u0020optimizer.",
+            "url": "classes/tei187-QrImage2Svg-Converter.html#method__calculateVersion"
         },                {
             "fqsen": "\\tei187\\QrImage2Svg\\Converter\u003A\u003AgetInputPath\u0028\u0029",
             "name": "getInputPath",

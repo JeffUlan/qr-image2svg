@@ -206,19 +206,31 @@
             $dims = [ imagesx($img), imagesy($img) ];
             sort( $dims, SORT_ASC );
             
-            for( $i = 0; $i <= $dims[0]; $i++ ) {
-                $c = imagecolorsforindex($img, imagecolorat($img, $i, $i));
-                if(round(array_sum($c) / 3, 0) > 127) {
+            if($dims[0] == 0)
+                return false;
+
+            $maxTileLength = ceil($dims[0] / 20); // smallest QR can have 21 tiles per axis (version 1), round up to get integer
+            $maxMarkerLength = ($maxTileLength * 7) + 1; // marker is 7x7 tiles, so multiply length of minimal by 7 and add one pixel for change
+            // its done this way so the script will stop iterating the for-loop after a certain point, meaning:
+            // if the threshold limit is not found by then, the image is corrupt, not a standard QR or threshold parameter was not properly assigned
+
+            $found = false;
+            for( $i = 0; $i <= $maxMarkerLength; $i++ ) {
+                $c = imagecolorsforindex($img, imagecolorat($img, 0, $i));
+                if(round(array_sum($c) / 3, 0) > 127 && $i > 2) {
+                    $found = true;
                     unset($img, $c);
                     break;
                 }
             }
 
-            if($i == 0)
+            if($i == 0 || !$found)
                 return false;
             else {
-                $o = intval(round($dims[0] / $i, 0));
-                return $o < 21 ? false : $o;
+                $o = intval(round($dims[0] / ($i / 7), 0));
+                // ($i / 7) because the top border of corner marker will have 7 tile lengths, so to specify the amount of tiles per axis you have to divide it by 7
+                $version = $this->_calculateVersion($o);
+                return $version < 21 ? 21 : $version;
             }
         }
 

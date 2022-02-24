@@ -226,6 +226,30 @@
             return $svgStr;
         }
 
+        /**
+         * Rough QR version calculator and optimizer.
+         *
+         * Version estimator equation:
+         * 
+         *  `tilesPerAxis = (qr_version * 4) + 17`
+         * 
+         *  and:
+         *  1. `x` must be odd number
+         *  2. `(x - 17) / 4` must be integer
+         * 
+         *  hence optimized output will be:
+         * 
+         *  `properTilesPerAxis = ((round((x - 17) / 4) * 4) + 17`
+         * 
+         * @link https://en.wikipedia.org/wiki/QR_code#Storage
+         * 
+         * @param float|int $x Input value.
+         * @return int
+         */
+        protected function _calculateVersion($x) {
+            return (round(($x - 17) / 4, 0) * 4) + 17;
+        }
+
         /** Returns input path. */
         public function getInputPath() { return $this->inputPath; }
         /** Returns output path. */

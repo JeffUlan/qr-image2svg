@@ -238,11 +238,14 @@
             if($dims[0] == 0)
                 return false;
             
+            $maxTileLength = ceil($dims[0] / 20);
+            $maxMarkerLength = ($maxTileLength * 7) + 1;
+
             // probe
             // - list cmd parts
             $points = [];
-            for($i = 0; $i <= $dims[0]; $i++) {
-                $points[] = "%[pixel:s.p{" . $i . "," . $i . "}]";
+            for($i = 0; $i <= $maxMarkerLength; $i++) {
+                $points[] = "%[pixel:s.p{0," . $i . "}]";
             }
             $pointsChunks = array_chunk($points, 50);
             unset($points);
@@ -256,6 +259,7 @@
             unset($pointsChunks, $chunk);
 
             // - parse output
+            $found = false;
             $temp = array_map(
                 function($v) {
                     if($v !== null && strlen(trim($v)) > 0) {
@@ -271,17 +275,19 @@
             $i = 0;
             foreach($temp as $k => $v) {
                 if($v[0] > 127) {
+                    $found = true;
                     $f = $k;
                     unset($temp);
                     break;
                 }
             }
             
-            if($f == 0)
+            if($f == 0 || !$found)
                 return false;
             else {
-                $o = intval(round($dims[0] / $f, 0));
-                return $o < 21 ? false : $o;
+                $o = intval(round($dims[0] / ($f / 7), 0));
+                $version = $this->_calculateVersion($o);
+                return $version < 21 ? 21 : $version;
             }
         }
 
