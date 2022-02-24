@@ -1,3 +1,5 @@
+![QR image-2-svg converter](https://repository-images.githubusercontent.com/457393906/2829ff00-7eb6-45f5-871f-be9eec7e0576)
+
 # **QR image 2 SVG converter**
 
 [DEMO APP](https://qrgen.xowergs.wirt16.bhlink.pl) *(not user friendly at the moment, looks messy, lots of reclicking)*
