@@ -72,11 +72,9 @@ The main reason to create this solution was my day-to-day job, where I have to h
 
   Steps describe the amount of matrix tiles per X or Y axis of the QR code. In this scope, a tile is considered a single position in QR code's matrix. It's length (in bitmap image scope) is best described as the pixels width of vertical border in the top left part of the code. The amount of steps translates to `{image width} / {tile length}`, rounded up to integer value. **However**, it does not have to be this exact value - it is largely dependent on the input image's parameters and rendering, like antialiasing of the edges, compression level, etc. As such, **this value may have to be adjusted manually**.
 
-  And additional mechanism is introduced within `suggestTilesQuantity()` method, where the processor looks up the width of the top left marker, using top border width as a designator. This length will always be equivalent to 7 QR tiles, so `{marker length} / 7` will return average length of a single tile expressed in pixels (float, for calculation). From there, the value is sent to parent method `_calculateVersion` where it's being checked and optimized.
+  And additional mechanism is introduced within `suggestTilesQuantity()` method, where the processor looks up the width of the top left marker, using top border width as a designator. This length will always be equivalent to 7 QR tiles, so `{marker length} / 7` will return average length of a single tile expressed in pixels (float, for calculation). Next, marker length is being used to find the position of timing pattern lanes, after which it calculates the interruptions in this specific row. 
 
-  Using the marker's top border width gives a better estimate on the pixel-wise average length of a single tile. Using just the width of marker's left border may turn out to be insufficient and inexact.
-
-  This method returns more solid, automatic assignment of steps, and perhaps may replace manual assignment in the future. For now, it has not been thorougly tested - all I can say is that a testing sample pool passed with flying colors, where the same pool did fail in some samples while using previous methodology.
+  This method returns more solid, automatic assignment of steps, and perhaps may replace manual assignment in the future. For now, it has not been thorougly tested - all I can say is that a testing sample pool passed with flying colors, where the same pool did fail in some samples while using previous methodology. It is however suggested for the image's tiles to be at least 4x4 pixels - lower values, especially with higher density of the QR, will give off-values, due to too short distance to sample.
 
 * ### **Threshold**
 
@@ -90,6 +88,7 @@ The main reason to create this solution was my day-to-day job, where I have to h
 
 ## **Future plans:**
 * ~suggest grid step length automatically~ *(done, lookup `suggestTilesQuantity()` public method)*
+* expand grid suggestion algorithm to check for minimal average tile length
 * allow specific channels thresholds
 
 ## **Requirements**

@@ -243,11 +243,11 @@
          * 
          * @link https://en.wikipedia.org/wiki/QR_code#Storage
          * 
-         * @param float|int $x Input value.
+         * @param float|int $x Input value. Number of columns per row.
          * @return int
          */
         protected function _calculateVersion($x) {
-            return (round(($x - 17) / 4, 0) * 4) + 17;
+            return (floor(($x - 17) / 4) * 4) + 17;
         }
 
         /** Returns input path. */

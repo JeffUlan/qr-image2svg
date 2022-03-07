@@ -16,7 +16,7 @@
          * @param string|null $paramThresholdChannel Currently not used.
          * @param boolean $usePrefix Boolean flag if `magick` command prefix should be used (environment specific).
          */
-        function __construct(?string $inputPath, ?string $outputDir, ?int $paramSteps = null, int $paramThreshold = 127, bool $trimImage = true, bool $usePrefix = true) {
+        function __construct(?string $inputPath, ?string $outputDir, ?int $paramSteps = null, int $paramThreshold = 127, bool $trimImage = false, bool $usePrefix = true) {
             $this->_setInputPath($inputPath); // 1. check if input path is proper and exists (if it is file)
             $this->_setOutputDir($outputDir); // 2. check if output dir is proper, in app scope and exists (if it is directory)
             $this->_setParamSteps($paramSteps); // 3. assign parameter for steps (can't be lower than smallest QR)
@@ -211,7 +211,6 @@
                 explode("x", $c[0]),
                 array($c[1], $c[2]) 
             );
-            
             if(count($c) == 4 && ($c[0] != 0 && $c[1] != 0)) {
                 shell_exec($this->_getPrefix()."convert {$this->inputPath} -crop {$c[0]}x{$c[1]}+{$c[2]}+{$c[3]} {$this->inputPath}");
                 $this->_setImageDimensions( $this->_retrieveImageSize() );
@@ -232,7 +231,9 @@
 
             // get dimensions
             $dims = $this->_retrieveImageSize($path);
-            $dims = is_array($dims) ? $dims : [ 0, 0 ];
+            $dims = is_array($dims) 
+                ? $dims 
+                : [ 0, 0 ];
             sort( $dims, SORT_ASC );
 
             if($dims[0] == 0)
@@ -249,15 +250,13 @@
             }
             $pointsChunks = array_chunk($points, 50);
             unset($points);
-
             // - chunk to limit
             $output = "";
             foreach($pointsChunks as $chunk) {
                 $part = implode("..", $chunk);
-                $output .= shell_exec($this->_getPrefix() . "identify -format \(" . $part . "\) " . $this->inputPath) ."..";
+                $output .= shell_exec($this->_getPrefix() . "identify -format \(" . $part . "\) " . $path) ."..";
             }
             unset($pointsChunks, $chunk);
-
             // - parse output
             $found = false;
             $temp = array_map(
@@ -272,7 +271,6 @@
 
             // find corner
             $f = 0;
-            $i = 0;
             foreach($temp as $k => $v) {
                 if($v[0] > 127 && $k >= 7) {
                     $found = true;
@@ -285,9 +283,50 @@
             if($f == 0 || !$found)
                 return false;
             else {
-                $o = intval(round($dims[0] / ($f / 7), 0));
-                $version = $this->_calculateVersion($o);
-                return $version < 21 ? 21 : $version;
+                $j = ceil($f - (($f / 7) / 2));
+                $k = $f + 1;
+                $points = [];
+
+                for($k; $k < $dims[0]; $k++) { $points[] = "%[pixel:s.p{" . $k . "," . $j . "}]"; }
+                $pointsChunks = array_chunk($points, 50); unset($points); $output = "";
+                foreach($pointsChunks as $chunk) {
+                    $part = implode("..", $chunk);
+                    $output .= shell_exec($this->_getPrefix() . "identify -format \(" . $part . "\) ". $path) . "..";
+                }
+                unset($pointsChunks, $chunk);
+                $temp = array_map(
+                    function($v) {
+                        if($v !== null && strlen(trim($v)) > 0) {
+                            preg_match_all("/\d+/", $v, $match);
+                            return $match[0];
+                        }
+                    }, explode("..", trim($output, "."))
+                );
+                unset($output, $match);
+
+                $interruptions = 0;
+                $last = null;
+                $current = null;
+                foreach($temp as $k => $v) {
+                    if(is_null($last) && is_null($current)) {
+                        $last = $v[0];
+                        continue;
+                    }
+
+                    $current = $v[0];
+                    if($last !== $current) {
+                        $interruptions++;
+                    }
+                    $last = $current;
+                }
+
+                $result = ($interruptions + 14) > 177 
+                    ? 177 
+                    : $interruptions + 14;
+                $result = $result < 21 
+                    ? 21 
+                    : $result;
+                return $result;
             }
         }
 
@@ -307,7 +346,6 @@
                 explode("x", $c[0]),
                 array($c[1], $c[2]) 
             );
-            
             if(count($c) == 4 && ($c[0] != 0 && $c[1] != 0)) {
                 shell_exec($prefix."convert {$path} -crop {$c[0]}x{$c[1]}+{$c[2]}+{$c[3]} {$path}");
                 return true;

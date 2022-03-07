@@ -1,5 +1,4 @@
 <?php
-
     namespace tei187\QrImage2Svg\Converter;
     use tei187\QrImage2Svg\Converter;
 
@@ -14,7 +13,7 @@
          * @param integer $paramThreshold Threshold used to differentiate filled and empty QR tiles.
          * @param string|null $trimImage Trims white border on `TRUE`.
          */
-        function __construct(?string $inputPath, ?string $outputDir, ?int $paramSteps = null, int $paramThreshold = 127, bool $trimImage = null) {
+        function __construct(?string $inputPath, ?string $outputDir, ?int $paramSteps = null, int $paramThreshold = 127, bool $trimImage = false) {
             $this->_setInputPath($inputPath); // 1. check if input path is proper and exists (if it is file)
             $this->_setOutputDir($outputDir); // 2. check if output dir is proper, in app scope and exists (if it is directory)
             $this->_setParamSteps($paramSteps); // 3. assign parameter for steps (can't be lower than smallest QR)
@@ -23,7 +22,7 @@
             // 5. check and assign dimensions
             if($this->inputPath !== null) {
                 if($trimImage) {
-                    $this->_trimImage;
+                    $this->_trimImage();
                 }
                 $this->_setImageDimensions( $this->_retrieveImageSize() ); // set image dimensions
                 $paramSteps !== null && $this->_setParamSteps($paramSteps)  // optimize on constructor
@@ -189,6 +188,27 @@
             return $dst;
         }
 
+
+        private function _applyThreshold($threshold) {
+            $img = $this->image['obj'];
+
+            for($x = 0; $x < $this->image['x']; $x++) {
+                for($y = 0; $y < $this->image['y']; $y++) {
+                    $c = imagecolorsforindex($img, imagecolorat($img, $x, $y));
+                    unset($c['alpha']);
+                    $avg = round(array_sum($c) / count($c), 0);
+                    if($avg > $threshold) {
+                        imagesetpixel($img, $x, $y, imagecolorallocate($img, 255, 255, 255));
+                    } else {
+                        imagesetpixel($img, $x, $y, imagecolorallocate($img, 0, 0, 0));
+                    }
+                }
+            }
+
+            $img = imagecropauto($img, IMG_CROP_WHITE);
+            return $img;
+        }
+
         /**
          * Return suggested tiles quantity for tile grid. Should be treated more as a relative number, rather than absolute.
          *
@@ -198,39 +218,79 @@
             if(is_null($this->image['obj']))
                 $this->_createImage($this->inputPath);
                 
-            $img = imagecropauto($this->image['obj'], IMG_CROP_THRESHOLD, .50, 255);
+            $img = $this->_applyThreshold(127);
             
             if($img === false)
                 return false;
 
-            $dims = [ imagesx($img), imagesy($img) ];
+            $dims = [ 
+                imagesx($img), 
+                imagesy($img),
+            ];
             sort( $dims, SORT_ASC );
             
             if($dims[0] == 0)
                 return false;
 
-            $maxTileLength = ceil($dims[0] / 20); // smallest QR can have 21 tiles per axis (version 1), round up to get integer
+            $maxTileLength = ceil($dims[0] / 20); // smallest QR can have 21 tiles per axis (version 1). Dividing by 20 instead in order to have so margin for antialiasing.
             $maxMarkerLength = ($maxTileLength * 7) + 1; // marker is 7x7 tiles, so multiply length of minimal by 7 and add one pixel for change
             // its done this way so the script will stop iterating the for-loop after a certain point, meaning:
             // if the threshold limit is not found by then, the image is corrupt, not a standard QR or threshold parameter was not properly assigned
 
+            // seeking marker edge
             $found = false;
+            $started = false;
+
             for( $i = 0; $i <= $maxMarkerLength; $i++ ) {
                 $c = imagecolorsforindex($img, imagecolorat($img, 0, $i));
-                if(round(array_sum($c) / 3, 0) > 127 && $i >= 7) {
+                $c['alpha'] = 0;
+                if(round(array_sum($c) / 3, 0) == 0 && !$started) {
+                    $started = true;
+                }
+                if(round(array_sum($c) / 3, 0) > 127 && $started) {
                     $found = true;
-                    unset($img, $c);
+                    unset($c);
                     break;
                 }
             }
 
-            if($i == 0 || !$found)
+            // if found
+                // rescale if needed, meaning i == 7 and 2i < 21
+            
+            if($i == 0 || !$found) {
                 return false;
-            else {
-                $o = intval(round($dims[0] / ($i / 7), 0));
-                // ($i / 7) because the top border of corner marker will have 7 tile lengths, so to specify the amount of tiles per axis you have to divide it by 7
-                $version = $this->_calculateVersion($o);
-                return $version < 21 ? 21 : $version;
+            } else {
+                // count interruptions on timing line
+                $j = ceil($i - (($i / 7) / 2)); // middle height of right-bottom corner of marker in top-left corner
+                $k = $i; // x position outside the marker on right side border
+                $interruptions = 0;
+                $last = null;
+                $current = null;
+
+                for( $k; $k < $dims[0]; $k++) {
+                    $c = imagecolorsforindex($img, imagecolorat($img, $k, $j));
+                    $c['alpha'] = 0;
+                    $sum = array_sum($c);
+
+                    if(is_null($last) && is_null($current)) {
+                        $last = $sum / 3;
+                        continue;
+                    }
+
+                    $current = $sum / 3;
+                    if($last !== $current) {
+                        $interruptions++;
+                    }
+                    $last = $current;
+                }
+
+                $result = ($interruptions + 14) > 177 
+                    ? 177 
+                    : $interruptions + 14;
+                $result = $result < 21 
+                    ? 21 
+                    : $result;
+                return $result;
             }
         }
 
