@@ -250,6 +250,17 @@
             return (floor(($x - 17) / 4) * 4) + 17;
         }
 
+        /**
+         * Retrieve QR version by columns count in row (shold be calculated through timing line - 14 + interruptions count).
+         *
+         * @param integer $x Columns count.
+         * @return false|int
+         */
+        static function getVersionFromColumnCount(int $x) {
+            $v = ($x - 17) / 4;
+            return ($v % 1 !== 0) ? false : $v;
+        }
+
         /** Returns input path. */
         public function getInputPath() { return $this->inputPath; }
         /** Returns output path. */

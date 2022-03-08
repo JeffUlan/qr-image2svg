@@ -173,7 +173,18 @@
          */
         static function trimImage($path) {
             $img = self::_createFrom($path);
-            $dst = imagecropauto($img, IMG_CROP_THRESHOLD, .78, 16777215);
+            if(!imageistruecolor($img)) {
+                $dims = [
+                    'x' => imagesx($img),
+                    'y' => imagesy($img),
+                ];
+                $dst = imagecreatetruecolor($dims['x'], $dims['y']);
+                imagecopy($dst, $img, 0, 0, 0, 0, $dims['x'], $dims['y']);
+                $dst = imagecropauto($dst, IMG_CROP_THRESHOLD, .78, 16777215);
+            } else {
+                $dst = imagecropauto($img, IMG_CROP_THRESHOLD, .78, 16777215);
+            }
+
             if($dst !== false) {
                 $ext = pathinfo($path, PATHINFO_EXTENSION);
                 switch(strtolower($ext)) {
@@ -212,12 +223,15 @@
         /**
          * Return suggested tiles quantity for tile grid. Should be treated more as a relative number, rather than absolute.
          *
-         * @return false|int `Integer` with grid tiles per axis. `FALSE` if threshold did not work.
+         * @return false|int `Integer` with grid tiles per axis. `FALSE` if threshold did not work or outcome is invalid by specification.
          */
         public function suggestTilesQuantity() {
+            // preparation
             if(is_null($this->image['obj']))
                 $this->_createImage($this->inputPath);
-                
+
+            imagefilter($this->image['obj'], IMG_FILTER_GRAYSCALE);
+            
             $img = $this->_applyThreshold(127);
             
             if($img === false)
