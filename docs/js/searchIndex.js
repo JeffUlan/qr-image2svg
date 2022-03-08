@@ -56,6 +56,11 @@ Search.appendIndex(
             "summary": "Trims\u0020white\u0020image\u0020border,\u0020based\u0020on\u0020a\u0020simulated\u0020200\u002D255\u0020RGB\u0020threshold.",
             "url": "classes/tei187-QrImage2Svg-Converter-GD.html#method_trimImage"
         },                {
+            "fqsen": "\\tei187\\QrImage2Svg\\Converter\\GD\u003A\u003A_applyThreshold\u0028\u0029",
+            "name": "_applyThreshold",
+            "summary": "",
+            "url": "classes/tei187-QrImage2Svg-Converter-GD.html#method__applyThreshold"
+        },                {
             "fqsen": "\\tei187\\QrImage2Svg\\Converter\\GD\u003A\u003AsuggestTilesQuantity\u0028\u0029",
             "name": "suggestTilesQuantity",
             "summary": "Return\u0020suggested\u0020tiles\u0020quantity\u0020for\u0020tile\u0020grid.\u0020Should\u0020be\u0020treated\u0020more\u0020as\u0020a\u0020relative\u0020number,\u0020rather\u0020than\u0020absolute.",
@@ -195,6 +200,11 @@ Search.appendIndex(
             "name": "_calculateVersion",
             "summary": "Rough\u0020QR\u0020version\u0020calculator\u0020and\u0020optimizer.",
             "url": "classes/tei187-QrImage2Svg-Converter.html#method__calculateVersion"
+        },                {
+            "fqsen": "\\tei187\\QrImage2Svg\\Converter\u003A\u003AgetVersionFromColumnCount\u0028\u0029",
+            "name": "getVersionFromColumnCount",
+            "summary": "Retrieve\u0020QR\u0020version\u0020by\u0020columns\u0020count\u0020in\u0020row\u0020\u0028shold\u0020be\u0020calculated\u0020through\u0020timing\u0020line\u0020\u002D\u002014\u0020\u002B\u0020interruptions\u0020count\u0029.",
+            "url": "classes/tei187-QrImage2Svg-Converter.html#method_getVersionFromColumnCount"
         },                {
             "fqsen": "\\tei187\\QrImage2Svg\\Converter\u003A\u003AgetInputPath\u0028\u0029",
             "name": "getInputPath",
