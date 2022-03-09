@@ -64,21 +64,32 @@ The main reason to create this solution was my day-to-day job, where I have to h
 ## **Parameters & input requirements**
 * ### **File**
 
-  Input image files should be trimmed around the of QR code, so the image does not have any additional margin for quiet zone. Package supports JPG, GIF, PNG, BMP and WEBP file types.
+  Package supports JPG, GIF, PNG, BMP and WEBP image file types for GD subclass. In case of ImageMagick it becomes installation dependent - to check whether your installation supports previously listed image types, use `'magick identify -list format'` command.
+
+  Input image files should be trimmed around the QR code, so the image does not have any additional margin for quiet zone. It can be handled by the package (`_trimImage` method), but relies heavily on how straightforward the image is - it may produce errors on blurred or skewed .
   
-  Furthermore, images should be prepared in standard fashion: filled/black tiles having average color values lower than threshold, blank/white tiles having higher.
+  Furthermore, images should be prepared in standard fashion: filled/black square tiles having average color values lower than threshold, blank/white tiles having higher.
+
+  Other requirements:
+  * images *should* be trimmed, as in "without quiet zone" (it can be done through the package, using `::trimImage` method, but requires a well polished image),
+  * images *should* be prepared in standard QR fashion: filled/black square tiles having average color values lower than threshold, blank/white square tiles having higher,
+  * images *should* not be blured (in practice they should not be excesively blured, package works with some slight bluring or antialiasing quite well though),
+  * images **cannot** be skewed, irregularly transformed or otherwise malformed.
 
 * ### **Steps**
 
-  Steps describe the amount of matrix tiles per X or Y axis of the QR code. In this scope, a tile is considered a single position in QR code's matrix. It's length (in bitmap image scope) is best described as the pixels width of vertical border in the top left part of the code. The amount of steps translates to `{image width} / {tile length}`, rounded up to integer value. **However**, it does not have to be this exact value - it is largely dependent on the input image's parameters and rendering, like antialiasing of the edges, compression level, etc. As such, **this value may have to be adjusted manually**.
+  Steps describe the amount of matrix tiles per X or Y axis of the QR code. In this scope, a tile is considered a single position in QR code's matrix. It's length (in bitmap image scope) is best described as the pixels width of vertical border in the top left part of the code. The amount of steps translates roughly to `{image width} / {average tile length}`, rounded up to integer value. **However**, it does not have to be this exact value - it is largely dependent on the input image's parameters and rendering, like antialiasing of the edges, compression level, etc. As such, **this value may have to be adjusted manually**.
+
+
 
   And additional mechanism is introduced within `suggestTilesQuantity()` method, where the processor looks up the width of the top left marker, using top border width as a designator. This length will always be equivalent to 7 QR tiles, so `{marker length} / 7` will return average length of a single tile expressed in pixels (float, for calculation). Next, marker length is being used to find the position of timing pattern lanes, after which it calculates the interruptions in this specific row. 
-
   This method returns more solid, automatic assignment of steps, and perhaps may replace manual assignment in the future. For now, it has not been thorougly tested - all I can say is that a testing sample pool passed with flying colors, where the same pool did fail in some samples while using previous methodology. It is however suggested for the image's tiles to be at least 4x4 pixels - lower values, especially with higher density of the QR, will give off-values, due to too short distance to sample.
+
+  Alternatively, one can also designate the steps parameter if the QR version is known. In this case, steps will equal `{version} * 4 + 17`.
 
 * ### **Threshold**
 
-  The probing of tiles is done by averaging color channel's values (average being `(R + G + B) / 3`). It should not matter with black and white QR codes, since filled and blank tiles should be very distinctly different. However, it may be more tricky with different hues, saturation and ligthness settings. Needs some manual input. For the time being, I suggest processing the images through by a CLUT or some such, until I expand a bit on the package.
+  The probing of tiles is done by averaging color channel's values (average being `(R + G + B) / 3`). It should not matter with black and white QR codes, since filled and blank tiles should be very distinctly different. However, it may be more tricky with different hues, saturation and lightness settings. Needs some manual input and control. For the time being, I suggest processing the images through by a CLUT or some such, until I expand a bit on the package.
 
 * ### **Trimming**
 
@@ -88,7 +99,7 @@ The main reason to create this solution was my day-to-day job, where I have to h
 
 ## **Future plans:**
 * ~suggest grid step length automatically~ *(done, lookup `suggestTilesQuantity()` public method)*
-* expand grid suggestion algorithm to check for minimal average tile length
+* ~expand grid suggestion algorithm to check for minimal average tile length~
 * allow specific channels thresholds
 
 ## **Requirements**
