@@ -222,7 +222,7 @@
         /**
          * Return suggested tiles quantity for tile grid. Should be treated more as a relative number, rather than absolute.
          *
-         * @return false|int
+         * @return false|int `Integer` with grid tiles per axis. `FALSE` if threshold did not work, outcome is invalid by QR specification or there is a mathematic discrepancy.
          */
         public function suggestTilesQuantity() {
             // set threshold image
@@ -241,6 +241,7 @@
             
             $maxTileLength = ceil($dims[0] / 20);
             $maxMarkerLength = ($maxTileLength * 7) + 1;
+            
 
             // probe
             // - list cmd parts
@@ -259,6 +260,7 @@
             unset($pointsChunks, $chunk);
             // - parse output
             $found = false;
+            $minimalTile = floor($dims[0] / 177);
             $temp = array_map(
                 function($v) {
                     if($v !== null && strlen(trim($v)) > 0) {
@@ -272,7 +274,7 @@
             // find corner
             $f = 0;
             foreach($temp as $k => $v) {
-                if($v[0] > 127 && $k >= 7) {
+                if($v[0] > 127 && $k > $minimalTile) {
                     $found = true;
                     $f = $k;
                     unset($temp);
@@ -318,6 +320,19 @@
                         $interruptions++;
                     }
                     $last = $current;
+                }
+
+                if($last > 127) {
+                    $interruptions--;
+                }
+
+                $check = [
+                    round($dims[0] / ($interruptions + 14)),
+                    round($f / 7)
+                ];
+
+                if($check[0] != $check[1]) {
+                    return false;
                 }
 
                 $result = ($interruptions + 14) > 177 

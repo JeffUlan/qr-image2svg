@@ -223,7 +223,7 @@
         /**
          * Return suggested tiles quantity for tile grid. Should be treated more as a relative number, rather than absolute.
          *
-         * @return false|int `Integer` with grid tiles per axis. `FALSE` if threshold did not work or outcome is invalid by specification.
+         * @return false|int `Integer` with grid tiles per axis. `FALSE` if threshold did not work, outcome is invalid by QR specification or there is a mathematic discrepancy.
          */
         public function suggestTilesQuantity() {
             // preparation
@@ -252,8 +252,9 @@
             // if the threshold limit is not found by then, the image is corrupt, not a standard QR or threshold parameter was not properly assigned
 
             // seeking marker edge
-            $found = false;
-            $started = false;
+            $started = false; // flag if marker border found
+            $found = false; // flag if end found
+            $minimalTile = floor($dims[0] / 177); // minimal tile of a border
 
             for( $i = 0; $i <= $maxMarkerLength; $i++ ) {
                 $c = imagecolorsforindex($img, imagecolorat($img, 0, $i));
@@ -261,7 +262,7 @@
                 if(round(array_sum($c) / 3, 0) == 0 && !$started) {
                     $started = true;
                 }
-                if(round(array_sum($c) / 3, 0) > 127 && $started) {
+                if(round(array_sum($c) / 3, 0) > 127 && $started && $i > $minimalTile) {
                     $found = true;
                     unset($c);
                     break;
@@ -287,7 +288,7 @@
                     $sum = array_sum($c);
 
                     if(is_null($last) && is_null($current)) {
-                        $last = $sum / 3;
+                        $last = ($sum / 3) < 127 ? null : $sum / 3; // prevents counting border-background on first rounds as an interruption
                         continue;
                     }
 
@@ -296,6 +297,20 @@
                         $interruptions++;
                     }
                     $last = $current;
+                }
+
+                if($last == 255) {
+                    $interruptions--; // prevent white untrimmed area on right side treated as interruption, last has to be filled with black
+                }
+
+                // validate marker length
+                $check = [
+                    round($dims[0] / ($interruptions + 14)),
+                    round($i / 7)
+                ];
+
+                if($check[0] != $check[1]) {
+                    return false;
                 }
 
                 $result = ($interruptions + 14) > 177 
