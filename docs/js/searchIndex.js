@@ -71,6 +71,11 @@ Search.appendIndex(
             "summary": "Generates\u0020SVG\u0020image\u0020per\u0020input\u0020parameters.",
             "url": "classes/tei187-QrImage2Svg-Converter-GD.html#method_output"
         },                {
+            "fqsen": "\\tei187\\QrImage2Svg\\Converter\\GD\u003A\u003A__seekBorderEnd\u0028\u0029",
+            "name": "__seekBorderEnd",
+            "summary": "Find\u0020border\u0020length\u0020of\u0020corner\u0020marker.",
+            "url": "classes/tei187-QrImage2Svg-Converter-GD.html#method___seekBorderEnd"
+        },                {
             "fqsen": "\\tei187\\QrImage2Svg\\Converter\\ImageMagick",
             "name": "ImageMagick",
             "summary": "",
@@ -135,6 +140,16 @@ Search.appendIndex(
             "name": "output",
             "summary": "Generates\u0020SVG\u0020image\u0020per\u0020input\u0020parameters.",
             "url": "classes/tei187-QrImage2Svg-Converter-ImageMagick.html#method_output"
+        },                {
+            "fqsen": "\\tei187\\QrImage2Svg\\Converter\\ImageMagick\u003A\u003A__seekBorderEnd\u0028\u0029",
+            "name": "__seekBorderEnd",
+            "summary": "Find\u0020border\u0020length\u0020of\u0020corner\u0020marker.",
+            "url": "classes/tei187-QrImage2Svg-Converter-ImageMagick.html#method___seekBorderEnd"
+        },                {
+            "fqsen": "\\tei187\\QrImage2Svg\\Converter\\ImageMagick\u003A\u003A__probeImageRow\u0028\u0029",
+            "name": "__probeImageRow",
+            "summary": "Returns\u0020specific\u0020row\u0027s\u0020pixels\u0020data.",
+            "url": "classes/tei187-QrImage2Svg-Converter-ImageMagick.html#method___probeImageRow"
         },                {
             "fqsen": "\\tei187\\QrImage2Svg\\Converter\\ImageMagick\u003A\u003A\u0024usePrefix",
             "name": "usePrefix",

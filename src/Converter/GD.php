@@ -252,31 +252,29 @@
             // if the threshold limit is not found by then, the image is corrupt, not a standard QR or threshold parameter was not properly assigned
 
             // seeking marker edge
-            $started = false; // flag if marker border found
-            $found = false; // flag if end found
             $minimalTile = floor($dims[0] / 177); // minimal tile of a border
+            $found = false;
+            $i = 0;
 
-            for( $i = 0; $i <= $maxMarkerLength; $i++ ) {
-                $c = imagecolorsforindex($img, imagecolorat($img, 0, $i));
-                $c['alpha'] = 0;
-                if(round(array_sum($c) / 3, 0) == 0 && !$started) {
-                    $started = true;
+            for($y = 0; $found == false; $y++) {
+                if($y == $dims[0]) {
+                    break;
                 }
-                if(round(array_sum($c) / 3, 0) > 127 && $started && $i > $minimalTile) {
+                
+                $p = $this->__seekBorderEnd($img, $y, $minimalTile, $maxMarkerLength);
+                if($p[0]) {
+                    $i = $p[1];
                     $found = true;
-                    unset($c);
                     break;
                 }
             }
-
-            // if found
-                // rescale if needed, meaning i == 7 and 2i < 21
             
             if($i == 0 || !$found) {
                 return false;
             } else {
                 // count interruptions on timing line
-                $j = ceil($i - (($i / 7) / 2)); // middle height of right-bottom corner of marker in top-left corner
+                $j = $y + ceil($i - (($i / 7) / 2));
+                //$j = ceil($i - (($i / 7) / 2)); // middle height of right-bottom corner of marker in top-left corner
                 $k = $i; // x position outside the marker on right side border
                 $interruptions = 0;
                 $last = null;
@@ -337,6 +335,47 @@
             $this->_probeTilesForColor();
             $this->tilesData = null;
             return $this->generateSVG();
+        }
+
+        /**
+         * Find border length of corner marker.
+         *
+         * @param resource|\GdImage $img Image resource to test.
+         * @param integer $y Height of a row to parse.
+         * @param integer $minimalTile Minimal tile length ~(width / 177);
+         * @param integer $maxMarkerLength Max corner marker length.
+         * @return array [bool,int]
+         */
+        private function __seekBorderEnd($img, int $y, int $minimalTile, int $maxMarkerLength ) {
+            $started = false;
+            $found = false;
+            $w = 0;
+            $b = 0;
+
+            for( $x = 0; $x <= $maxMarkerLength; $x++ ) {
+                $c = imagecolorsforindex($img, imagecolorat($img, $x, $y));
+                $c['alpha'] = 0;
+                if(round(array_sum($c) / 3, 0) == 0 && !$started) {
+                    $started = true;
+                }
+                if(round(array_sum($c) / 3, 0) == 0) {
+                    $b++;
+                }
+                if(round(array_sum($c) / 3, 0) > 127) {
+                    $w++;
+                    if($started && $x >= $minimalTile * 7) {
+                        if($w <= $b) {
+                            $found = true;
+                            unset($c);
+                            break;
+                        } else {
+                            break;
+                        }
+                    }
+                }
+            }
+
+            return [ $found, $x ];
         }
     }
 

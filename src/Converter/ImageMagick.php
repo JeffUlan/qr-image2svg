@@ -222,7 +222,7 @@
         /**
          * Return suggested tiles quantity for tile grid. Should be treated more as a relative number, rather than absolute.
          *
-         * @return false|int `Integer` with grid tiles per axis. `FALSE` if threshold did not work, outcome is invalid by QR specification or there is a mathematic discrepancy.
+         * @return false|int
          */
         public function suggestTilesQuantity() {
             // set threshold image
@@ -241,43 +241,21 @@
             
             $maxTileLength = ceil($dims[0] / 20);
             $maxMarkerLength = ($maxTileLength * 7) + 1;
-            
-
-            // probe
-            // - list cmd parts
-            $points = [];
-            for($i = 0; $i <= $maxMarkerLength; $i++) {
-                $points[] = "%[pixel:s.p{0," . $i . "}]";
-            }
-            $pointsChunks = array_chunk($points, 50);
-            unset($points);
-            // - chunk to limit
-            $output = "";
-            foreach($pointsChunks as $chunk) {
-                $part = implode("..", $chunk);
-                $output .= shell_exec($this->_getPrefix() . "identify -format \(" . $part . "\) " . $path) ."..";
-            }
-            unset($pointsChunks, $chunk);
-            // - parse output
-            $found = false;
             $minimalTile = floor($dims[0] / 177);
-            $temp = array_map(
-                function($v) {
-                    if($v !== null && strlen(trim($v)) > 0) {
-                        preg_match_all("/\d+/", $v, $match);
-                        return $match[0];
-                    }
-                }, explode("..", trim($output, "."))
-            );
-            unset($output, $match);
 
             // find corner
+            $found = false;
             $f = 0;
-            foreach($temp as $k => $v) {
-                if($v[0] > 127 && $k > $minimalTile) {
+            for($y = 0; $found == false; $y++) {
+                if($y == $dims[0]) {
+                    break;
+                }
+
+                $data = $this->__probeImageRow($path, $y, $maxMarkerLength);
+                $border = $this->__seekBorderEnd($data, $minimalTile);
+                if($border[0]) {
+                    $f = $border[1];
                     $found = true;
-                    $f = $k;
-                    unset($temp);
                     break;
                 }
             }
@@ -285,8 +263,8 @@
             if($f == 0 || !$found)
                 return false;
             else {
-                $j = ceil($f - (($f / 7) / 2));
-                $k = $f + 1;
+                $j = abs($y - ceil($f - (($f / 7) / 2)));
+                $k = $f;
                 $points = [];
 
                 for($k; $k < $dims[0]; $k++) { $points[] = "%[pixel:s.p{" . $k . "," . $j . "}]"; }
@@ -311,7 +289,7 @@
                 $current = null;
                 foreach($temp as $k => $v) {
                     if(is_null($last) && is_null($current)) {
-                        $last = $v[0];
+                        $last = $v[0] < 127 ? null : $v[0];
                         continue;
                     }
 
@@ -383,6 +361,79 @@
             $this->_probeTilesForColor();
             $this->tilesData = null;
             return $this->generateSVG();
+        }
+
+        /**
+         * Find border length of corner marker.
+         *
+         * @param array $data Pixel data for specific row.
+         * @param integer $minimalTile Minimal tile length ~(width / 177)
+         * @return array [bool,int]
+         */
+        private function __seekBorderEnd(array $data, int $minimalTile) {
+            $started = false;
+            $found = false;
+            $w = 0;
+            $b = 0;
+
+            foreach($data as $x => $v) {
+                if($v[0] == 0 && !$started)
+                    $started = true;
+                if($v[0] == 0)
+                    $b++;
+                if($v[0] > 127) {
+                    $w++;
+                    if($started && $x >= $minimalTile * 7) {
+                        if($w <= $b) {
+                            $found = true;
+                            break;
+                        } else {
+                            break;
+                        }
+                    }
+                }
+            }
+
+            return [ $found, $x ];
+        }
+
+        /**
+         * Returns specific row's pixels data.
+         *
+         * @param string $path Path to image file after threshold application.
+         * @param int $y Height of a row to parse.
+         * @param int $maxMarkerLength Max corner marker length.
+         * @return array
+         */
+        private function __probeImageRow(string $path, int $y, int $maxMarkerLength) {
+            // - list cmd parts
+            $points = [];
+            for($x = 0; $x <= $maxMarkerLength; $x++) {
+                $points[] = "%[pixel:s.p{". $x ."," . $y . "}]";
+            }
+            $pointsChunks = array_chunk($points, 50);
+            unset($points);
+
+            // - chunk to limit
+            $output = "";
+            foreach($pointsChunks as $chunk) {
+                $part = implode("..", $chunk);
+                $output .= shell_exec($this->_getPrefix() . "identify -format \(" . $part . "\) " . $path) ."..";
+            }
+            unset($pointsChunks, $chunk);
+
+            // - parse output
+            $row = array_map(
+                function($v) {
+                    if($v !== null && strlen(trim($v)) > 0) {
+                        preg_match_all("/\d+/", $v, $match);
+                        return $match[0];
+                    }
+                }, explode("..", trim($output, "."))
+            );
+            unset($output, $match);
+
+            return $row;
         }
     }
 
